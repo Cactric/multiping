@@ -194,9 +194,9 @@ checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
 
 [[package]]
 name = "ping"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "591fab231233fc7e6f2fcbc2647944f0684c9608dea4f267b319bf21b46dc0fa"
+checksum = "2e6a3edd965f05ef07cbeb254129e3fdd97c0ea4110bef39cf2c1fa3307ce605"
 dependencies = [
  "rand 0.8.5",
  "socket2",
