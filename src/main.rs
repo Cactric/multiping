@@ -1,11 +1,11 @@
 use console::{Term, style};
-use std::io::Error;
+use std::{io::Error, net::SocketAddr, process::exit};
 use clap::Parser;
 use std::net::IpAddr;
 use std::time::Duration;
 use rand::random;
 
-use multiping::HostInfo;
+use multiping::{ping_host, HostInfo};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -30,10 +30,26 @@ fn say_hello() -> Result<(),Error> {
 }
 
 fn main() {
-    let _ = say_hello();
+    //let _ = say_hello();
     
     // Parse arguments
     let args = Arguments::parse();
+
+    if args.hosts.len() < 1 {
+        eprintln!("You need to specify hosts on the command line.\nExample: multiping 127.0.0.1");
+        exit(1);
+    }
     
     // Try pinging
+    for h in args.hosts {
+        let mut maybe_hinfo = HostInfo::new(&h);
+        if let Ok(mut hinfo) = maybe_hinfo {
+            match ping_host(&mut hinfo) {
+                Ok(()) => println!("Pinging {} succeeded.", h),
+                Err(e) => println!("Pinging {} failed: {}.", h, e),
+            }
+        } else {
+            eprintln!("Failed to parse {}", h);
+        }
+    }
 }
