@@ -7,6 +7,8 @@ use rand::random;
 
 use multiping::{ping_host, HostInfo};
 
+mod icmp;
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Arguments {

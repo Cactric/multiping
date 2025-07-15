@@ -2,6 +2,8 @@ use std::net::{AddrParseError, IpAddr, SocketAddr};
 use std::io::Error;
 use socket2::{Domain, Protocol, Socket, Type};
 
+mod icmp;
+
 pub struct HostInfo {
     // Times in this struct are in milliseconds? (unless I change them to a Duration)
     host: SocketAddr,
