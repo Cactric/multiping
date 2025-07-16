@@ -21,8 +21,8 @@ pub struct ICMPv4Message {
 #[derive(Debug)]
 pub enum ICMPv4Type {
     EchoReply { // #0
-        identifier: u8,
-        sequence_num: u8,
+        identifier: u16,
+        sequence_num: u16,
     },
     // #1 and #2 are unassigned & reserved
     DestinationUnreachable { // #3
@@ -34,12 +34,13 @@ pub enum ICMPv4Type {
     SourceQuench {}, // #4, deprecated
     RedirectMessage { // #5
         code: RedirectMsgCode,
+        address: u32,
     },
     AlternateHostAddress {}, // #6, deprecated
     // #7 is unassigned and reserved
     EchoRequest { // #8
-        identifier: u8,
-        sequence_num: u8,
+        identifier: u16,
+        sequence_num: u16,
     },
     RouterAdvertisement {}, // #9
     RouterSolitation {}, // #10
@@ -50,15 +51,15 @@ pub enum ICMPv4Type {
         code: BadIPHeaderCode
     },
     Timestamp { // #13
-        identifier: u8,
-        sequence_num: u8,
+        identifier: u16,
+        sequence_num: u16,
         ts_originate: u32,
         ts_receive: u32,
         ts_transmit: u32,
     },
     TimestampReply { // #14
-        identifier: u8,
-        sequence_num: u8,
+        identifier: u16,
+        sequence_num: u16,
         ts_originate: u32,
         ts_receive: u32,
         ts_transmit: u32,
@@ -122,51 +123,85 @@ impl TryFrom<&[u8]> for ICMPv4Message {
         match msgbytes[0] { // Match on the type
             0 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::EchoReply {
-                    identifier: be_u16(&msgbytes[4..=5]),
-                    sequence_num: be_u16(&msgbytes[6..=7]) 
+                    identifier: be_u16(msgbytes[4], msgbytes[5]),
+                    sequence_num: be_u16(msgbytes[6], msgbytes[7])
                 },
-                icmpv4_checksum: be_u16(&msgbytes[2..=3]),
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
-            3 => Ok(ICMPv4Message {
-                icmpv4_type: ICMPv4Type::DestinationUnreachable {
-                    code: match msgbytes[1] {
-                        0 => DestinationUnreachableCode::NetworkUnreachable,
-                        1 => DestinationUnreachableCode::HostUnreachable,
-                        2 => DestinationUnreachableCode::ProtocolUnreachable,
-                        3 => DestinationUnreachableCode::PortUnreachable,
-                        4 => DestinationUnreachableCode::FragmentationRequired,
-                        5 => DestinationUnreachableCode::SourceRouteFailed,
-                        6 => DestinationUnreachableCode::NetworkUnknown,
-                        7 => DestinationUnreachableCode::DestHostUnknown,
-                        8 => DestinationUnreachableCode::SourceHostIsolated,
-                        9 => DestinationUnreachableCode::NetAdministrativelyProhibited,
-                        10 => DestinationUnreachableCode::HostAdministrativelyProhibited,
-                        11 => DestinationUnreachableCode::NetworkUnreachableForToS,
-                        12 => DestinationUnreachableCode::HostUnreachableForToS,
-                        13 => DestinationUnreachableCode::CommAdministrativelyProhibited,
-                        14 => DestinationUnreachableCode::HostPrecedenceViolation,
-                        15 => DestinationUnreachableCode::PrecedenceCuttoffInEffect,
+            3 => {
+                let code: DestinationUnreachableCode = parse_unreachable_code(msgbytes[1])?;
+                Ok(ICMPv4Message {
+                    icmpv4_type: ICMPv4Type::DestinationUnreachable {
+                        code: code,
+                        length: msgbytes[5],
+                        next_hop_mtu: be_u16(msgbytes[6], msgbytes[7])
+                    }, icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                    icmpv4_data: msgbytes[8..].to_vec()
+                })
+            },
+            4 => Ok(ICMPv4Message {
+                icmpv4_type: ICMPv4Type::SourceQuench {},
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_data: msgbytes[8..].to_vec()
+            }),
+            5 => {
+                let code: RedirectMsgCode = parse_redirect_code(msgbytes[1])?;
+                Ok(ICMPv4Message {
+                    icmpv4_type: ICMPv4Type::RedirectMessage {
+                        code: code,
+                        address: be_u32(msgbytes[4], msgbytes[5], msgbytes[6], msgbytes[7])
                     },
-                    length: msgbytes[5],
-                    next_hop_mtu: be_u16(&msgbytes[6..=7])
-                },
-                icmpv4_checksum: be_u16(&msgbytes[2..=3]),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                    icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                    icmpv4_data: msgbytes[8..].to_vec()
+                })
+            },
             _ => Err(IntoICMPv4MessageError::UnknownType)
         }
     }
 }
 
-// TODO: write some tests for these (should be easy enough)
-/// Construct a big-endian u16 from a slice of bytes
-pub fn be_u16(b: &[u8; 2]) -> u16 {
-    (b[0] as u16) << 8 + (b[1] as u16)
+pub fn parse_unreachable_code(value: u8) -> Result<DestinationUnreachableCode, IntoICMPv4MessageError> {
+    match value {
+        0 => Ok(DestinationUnreachableCode::NetworkUnreachable),
+        1 => Ok(DestinationUnreachableCode::HostUnreachable),
+        2 => Ok(DestinationUnreachableCode::ProtocolUnreachable),
+        3 => Ok(DestinationUnreachableCode::PortUnreachable),
+        4 => Ok(DestinationUnreachableCode::FragmentationRequired),
+        5 => Ok(DestinationUnreachableCode::SourceRouteFailed),
+        6 => Ok(DestinationUnreachableCode::NetworkUnknown),
+        7 => Ok(DestinationUnreachableCode::DestHostUnknown),
+        8 => Ok(DestinationUnreachableCode::SourceHostIsolated),
+        9 => Ok(DestinationUnreachableCode::NetAdministrativelyProhibited),
+        10 => Ok(DestinationUnreachableCode::HostAdministrativelyProhibited),
+        11 => Ok(DestinationUnreachableCode::NetworkUnreachableForToS),
+        12 => Ok(DestinationUnreachableCode::HostUnreachableForToS),
+        13 => Ok(DestinationUnreachableCode::CommAdministrativelyProhibited),
+        14 => Ok(DestinationUnreachableCode::HostPrecedenceViolation),
+        15 => Ok(DestinationUnreachableCode::PrecedenceCuttoffInEffect),
+        _ => Err(IntoICMPv4MessageError::UnknownCode)
+    }
 }
-/// Construct a big-endian u32 from a slice of bytes
-pub fn be_u32(b: &[u8; 4]) -> u32 {
-    (b[0] as u32) << 24 + (b[1] as u32) << 16 + (b[2] as u32) << 8 + (b[3] as u32)
+
+pub fn parse_redirect_code(value: u8) -> Result<RedirectMsgCode, IntoICMPv4MessageError> {
+    match (value) {
+        0 => Ok(RedirectMsgCode::Network),
+        1 => Ok(RedirectMsgCode::Host),
+        2 => Ok(RedirectMsgCode::ToSAndNetwork),
+        3 => Ok(RedirectMsgCode::ToSAndHost),
+        _ => Err(IntoICMPv4MessageError::UnknownCode)
+    }
+}
+
+
+// TODO: write some tests for these (should be easy enough)
+/// Construct a big-endian u16 from 2 bytes
+pub fn be_u16(a: u8, b: u8) -> u16 {
+    (a as u16) << 8 + (b as u16)
+}
+/// Construct a big-endian u32 from four bytes
+pub fn be_u32(a: u8, b: u8, c: u8, d: u8) -> u32 {
+    (a as u32) << 24 + (b as u32) << 16 + (c as u32) << 8 + (d as u32)
 }
 
 #[derive(Debug)]
