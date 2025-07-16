@@ -124,10 +124,10 @@ impl TryFrom<&[u8]> for ICMPv4Message {
         match msgbytes[0] { // Match on the type
             0 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::EchoReply {
-                    identifier: be_u16(msgbytes[4], msgbytes[5]),
-                    sequence_num: be_u16(msgbytes[6], msgbytes[7])
+                    identifier: be_u16(msgbytes, 4),
+                    sequence_num: be_u16(msgbytes, 6)
                 },
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             3 => {
@@ -136,14 +136,14 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     icmpv4_type: ICMPv4Type::DestinationUnreachable {
                         code: code,
                         length: msgbytes[5],
-                        next_hop_mtu: be_u16(msgbytes[6], msgbytes[7])
-                    }, icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                        next_hop_mtu: be_u16(msgbytes, 6)
+                    }, icmpv4_checksum: be_u16(msgbytes, 2),
                     icmpv4_data: msgbytes[8..].to_vec()
                 })
             },
             4 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::SourceQuench {},
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             5 => {
@@ -151,33 +151,33 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::RedirectMessage {
                         code: code,
-                        address: be_u32(msgbytes[4], msgbytes[5], msgbytes[6], msgbytes[7])
+                        address: be_u32(msgbytes, 4)
                     },
-                    icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                    icmpv4_checksum: be_u16(msgbytes, 2),
                     icmpv4_data: msgbytes[8..].to_vec()
                 })
             },
             6 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::SourceQuench {},
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             8 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::EchoRequest {
-                    identifier: be_u16(msgbytes[4], msgbytes[5]),
-                    sequence_num: be_u16(msgbytes[6], msgbytes[7])
+                    identifier: be_u16(msgbytes, 4),
+                    sequence_num: be_u16(msgbytes, 6)
                 },
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             9 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::RouterAdvertisement {},
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             10 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::RouterSolicitation {},
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             11 => {
@@ -190,7 +190,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     icmpv4_type: ICMPv4Type::TimeExceeded {
                         code: code,
                     },
-                    icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                    icmpv4_checksum: be_u16(msgbytes, 2),
                     icmpv4_data: msgbytes[8..].to_vec()
                 })
             },
@@ -205,30 +205,30 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     icmpv4_type: ICMPv4Type::BadIPHeader {
                         code: code,
                     },
-                    icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                    icmpv4_checksum: be_u16(msgbytes, 2),
                     icmpv4_data: msgbytes[8..].to_vec()
                 })
             },
             13 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::Timestamp {
-                    identifier: be_u16(msgbytes[4], msgbytes[5]),
-                    sequence_num: be_u16(msgbytes[6], msgbytes[7]),
-                    ts_originate: be_u32(msgbytes[8], msgbytes[9], msgbytes[10], msgbytes[11]),
-                    ts_receive: be_u32(msgbytes[12], msgbytes[13], msgbytes[14], msgbytes[15]),
-                    ts_transmit:  be_u32(msgbytes[16], msgbytes[17], msgbytes[18], msgbytes[19])
+                    identifier: be_u16(msgbytes, 4),
+                    sequence_num: be_u16(msgbytes, 6),
+                    ts_originate: be_u32(msgbytes, 8),
+                    ts_receive: be_u32(msgbytes, 12),
+                    ts_transmit:  be_u32(msgbytes, 16)
                 },
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             14 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::TimestampReply {
-                    identifier: be_u16(msgbytes[4], msgbytes[5]),
-                    sequence_num: be_u16(msgbytes[6], msgbytes[7]),
-                    ts_originate: be_u32(msgbytes[8], msgbytes[9], msgbytes[10], msgbytes[11]),
-                    ts_receive: be_u32(msgbytes[12], msgbytes[13], msgbytes[14], msgbytes[15]),
-                    ts_transmit:  be_u32(msgbytes[16], msgbytes[17], msgbytes[18], msgbytes[19])
+                    identifier: be_u16(msgbytes, 4),
+                    sequence_num: be_u16(msgbytes, 6),
+                    ts_originate: be_u32(msgbytes, 8),
+                    ts_receive: be_u32(msgbytes, 12),
+                    ts_transmit:  be_u32(msgbytes, 16)
                 },
-                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             _ => Err(IntoICMPv4MessageError::UnknownType)
@@ -271,12 +271,12 @@ pub fn parse_redirect_code(value: u8) -> Result<RedirectMsgCode, IntoICMPv4Messa
 
 // TODO: write some tests for these (should be easy enough)
 /// Construct a big-endian u16 from 2 bytes
-pub fn be_u16(a: u8, b: u8) -> u16 {
-    (a as u16) << 8 + (b as u16)
+fn be_u16(bytes: &[u8], start: usize) -> u16 {
+    u16::from_be_bytes(bytes[start..(start+2)].try_into().unwrap())
 }
 /// Construct a big-endian u32 from four bytes
-pub fn be_u32(a: u8, b: u8, c: u8, d: u8) -> u32 {
-    (a as u32) << 24 + (b as u32) << 16 + (c as u32) << 8 + (d as u32)
+fn be_u32(bytes: &[u8], start: usize) -> u32 {
+    u32::from_be_bytes(bytes[start..(start+4)].try_into().unwrap())
 }
 
 /// Construct an echo request message
