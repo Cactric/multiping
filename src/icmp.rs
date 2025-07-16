@@ -119,6 +119,7 @@ pub enum IntoICMPv4MessageError {
 impl TryFrom<&[u8]> for ICMPv4Message {
     type Error = IntoICMPv4MessageError;
 
+    // TODO: reduce amount of repetition here
     fn try_from(msgbytes: &[u8]) -> Result<Self, Self::Error> {
         match msgbytes[0] { // Match on the type
             0 => Ok(ICMPv4Message {
@@ -276,6 +277,32 @@ pub fn be_u16(a: u8, b: u8) -> u16 {
 /// Construct a big-endian u32 from four bytes
 pub fn be_u32(a: u8, b: u8, c: u8, d: u8) -> u32 {
     (a as u32) << 24 + (b as u32) << 16 + (c as u32) << 8 + (d as u32)
+}
+
+/// Construct an echo request message
+/// NOTE: identifier and sequence_num here use normal endianness for your platform
+pub fn construct_echo_request(identifier: u16, sequence_num: u16, extdata: &[u8]) -> Vec<u8> {
+    let msg_type: u8 = 8; // EchoRequest
+    let msg_code: u8 = 0;
+    let be_id = identifier.to_be_bytes();
+    let be_seq = sequence_num.to_be_bytes();
+    let mut message = calculate_checksum([msg_type, msg_code, 0, 0, be_id[0], be_id[1], be_seq[0], be_seq[1]]).to_vec();
+    message.append(&mut extdata.to_vec());
+    message
+}
+
+/// Populates the checksum in the header
+pub fn calculate_checksum(header: &mut [u8]) {
+    let mut total = 0;
+    for b in header {
+        total += *b;
+    }
+    while !(total < 0xffff) {
+        total += (total >> 16)
+    }
+    let final_checksum: [u16; 2] = (!total as u16).to_be_bytes();
+    header[2] = final_checksum[0];
+    header[3] = final_checksum[1];
 }
 
 #[derive(Debug)]
