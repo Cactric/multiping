@@ -286,21 +286,23 @@ pub fn construct_echo_request(identifier: u16, sequence_num: u16, extdata: &[u8]
     let msg_code: u8 = 0;
     let be_id = identifier.to_be_bytes();
     let be_seq = sequence_num.to_be_bytes();
-    let mut message = calculate_checksum([msg_type, msg_code, 0, 0, be_id[0], be_id[1], be_seq[0], be_seq[1]]).to_vec();
+    let mut header = [msg_type, msg_code, 0, 0, be_id[0], be_id[1], be_seq[0], be_seq[1]];
+    calculate_checksum(&mut header);
+    let mut message: Vec<u8> = header.to_vec();
     message.append(&mut extdata.to_vec());
     message
 }
 
 /// Populates the checksum in the header
 pub fn calculate_checksum(header: &mut [u8]) {
-    let mut total = 0;
-    for b in header {
-        total += *b;
+    let mut total: u32 = 0;
+    for b in &mut *header {
+        total += *b as u32;
     }
     while !(total < 0xffff) {
         total += (total >> 16)
     }
-    let final_checksum: [u16; 2] = (!total as u16).to_be_bytes();
+    let final_checksum: [u8; 2] = (!total as u16).to_be_bytes();
     header[2] = final_checksum[0];
     header[3] = final_checksum[1];
 }
