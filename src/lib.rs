@@ -1,6 +1,9 @@
 use std::net::{AddrParseError, IpAddr, SocketAddr};
 use std::io::Error;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use socket2::{Domain, Protocol, Socket, Type};
+
+use crate::icmp::construct_echo_request;
 
 mod icmp;
 
@@ -41,7 +44,12 @@ pub fn ping_host(host_info: &mut HostInfo) -> Result<(), Error> {
     // TODO: persist sockets
     // TODO: IPv6
     let socket = Socket::new(Domain::for_address(host_info.host), Type::DGRAM, Some(Protocol::ICMPV4))?;
-    let buf: [u8; 5] = [1,2,3,4,5];
+    let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+    let secs = time.as_secs();
+    let nanos = time.subsec_nanos() as u64;
+    let mut buf: Vec<u8> = construct_echo_request(0xbeef, 1, &secs.to_be_bytes());
+    buf.append(&mut nanos.to_be_bytes().to_vec());
+    buf.append(&mut ((0x10 as u8)..=(0x37 as u8)).collect());
     socket.send_to(&buf, &host_info.host.into())?;
     
     return Ok(())
