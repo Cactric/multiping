@@ -1,9 +1,10 @@
-use std::net::{AddrParseError, IpAddr, SocketAddr};
-use std::io::Error;
+use std::mem::MaybeUninit;
+use std::net::{AddrParseError, IpAddr, SocketAddr, SocketAddrV4};
+use std::io::{self, Error, Read};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use socket2::{Domain, Protocol, Socket, Type};
 
-use crate::icmp::construct_echo_request;
+use crate::icmp::{construct_echo_request, ICMPv4Message};
 
 mod icmp;
 
@@ -43,7 +44,9 @@ impl HostInfo {
 pub fn ping_host(host_info: &mut HostInfo) -> Result<(), Error> {
     // TODO: persist sockets
     // TODO: IPv6
-    let socket = Socket::new(Domain::for_address(host_info.host), Type::DGRAM, Some(Protocol::ICMPV4))?;
+    let mut socket = Socket::new(Domain::for_address(host_info.host), Type::DGRAM, Some(Protocol::ICMPV4))?;
+    socket.set_read_timeout(Some(Duration::from_secs(2)));
+    
     let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
     let secs = time.as_secs();
     let nanos = time.subsec_nanos() as u64;
@@ -51,6 +54,18 @@ pub fn ping_host(host_info: &mut HostInfo) -> Result<(), Error> {
     buf.append(&mut nanos.to_be_bytes().to_vec());
     buf.append(&mut ((0x10 as u8)..=(0x37 as u8)).collect());
     socket.send_to(&buf, &host_info.host.into())?;
+    
+    // Echo request send, time to wait for a reply...
+    let mut rec_buf: [u8; 100] = [0; 100];
+    let addr = socket.peek_sender()?;
+    let used_bytes = socket.read(&mut rec_buf)?;
+    
+    // Try to parse the received bytes
+    if let Some(addr4) = addr.as_socket_ipv4() {
+        if SocketAddr::V4(addr4) == host_info.host {
+            println!("Yay, got a reply from the right host");
+        }
+    }
     
     return Ok(())
 }
