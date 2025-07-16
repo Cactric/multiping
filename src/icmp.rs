@@ -43,7 +43,7 @@ pub enum ICMPv4Type {
         sequence_num: u16,
     },
     RouterAdvertisement {}, // #9
-    RouterSolitation {}, // #10
+    RouterSolicitation {}, // #10
     TimeExceeded { // #11
         code: TimeExceededCode
     },
@@ -156,6 +156,80 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     icmpv4_data: msgbytes[8..].to_vec()
                 })
             },
+            6 => Ok(ICMPv4Message {
+                icmpv4_type: ICMPv4Type::SourceQuench {},
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_data: msgbytes[8..].to_vec()
+            }),
+            8 => Ok(ICMPv4Message {
+                icmpv4_type: ICMPv4Type::EchoRequest {
+                    identifier: be_u16(msgbytes[4], msgbytes[5]),
+                    sequence_num: be_u16(msgbytes[6], msgbytes[7])
+                },
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_data: msgbytes[8..].to_vec()
+            }),
+            9 => Ok(ICMPv4Message {
+                icmpv4_type: ICMPv4Type::RouterAdvertisement {},
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_data: msgbytes[8..].to_vec()
+            }),
+            10 => Ok(ICMPv4Message {
+                icmpv4_type: ICMPv4Type::RouterSolicitation {},
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_data: msgbytes[8..].to_vec()
+            }),
+            11 => {
+                let code: TimeExceededCode = match msgbytes[1] {
+                    0 => TimeExceededCode::ExpiredInTransit,
+                    1 => TimeExceededCode::FragmentReassemblyTimeExceeded,
+                    _ => return Err(IntoICMPv4MessageError::UnknownCode),
+                };
+                Ok(ICMPv4Message {
+                    icmpv4_type: ICMPv4Type::TimeExceeded {
+                        code: code,
+                    },
+                    icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                    icmpv4_data: msgbytes[8..].to_vec()
+                })
+            },
+            12 => {
+                let code: BadIPHeaderCode = match msgbytes[1] {
+                    0 => BadIPHeaderCode::PointerIndicatesError,
+                    1 => BadIPHeaderCode::MissingRequiredOption,
+                    2 => BadIPHeaderCode::BadLength,
+                    _ => return Err(IntoICMPv4MessageError::UnknownCode),
+                };
+                Ok(ICMPv4Message {
+                    icmpv4_type: ICMPv4Type::BadIPHeader {
+                        code: code,
+                    },
+                    icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                    icmpv4_data: msgbytes[8..].to_vec()
+                })
+            },
+            13 => Ok(ICMPv4Message {
+                icmpv4_type: ICMPv4Type::Timestamp {
+                    identifier: be_u16(msgbytes[4], msgbytes[5]),
+                    sequence_num: be_u16(msgbytes[6], msgbytes[7]),
+                    ts_originate: be_u32(msgbytes[8], msgbytes[9], msgbytes[10], msgbytes[11]),
+                    ts_receive: be_u32(msgbytes[12], msgbytes[13], msgbytes[14], msgbytes[15]),
+                    ts_transmit:  be_u32(msgbytes[16], msgbytes[17], msgbytes[18], msgbytes[19])
+                },
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_data: msgbytes[8..].to_vec()
+            }),
+            14 => Ok(ICMPv4Message {
+                icmpv4_type: ICMPv4Type::TimestampReply {
+                    identifier: be_u16(msgbytes[4], msgbytes[5]),
+                    sequence_num: be_u16(msgbytes[6], msgbytes[7]),
+                    ts_originate: be_u32(msgbytes[8], msgbytes[9], msgbytes[10], msgbytes[11]),
+                    ts_receive: be_u32(msgbytes[12], msgbytes[13], msgbytes[14], msgbytes[15]),
+                    ts_transmit:  be_u32(msgbytes[16], msgbytes[17], msgbytes[18], msgbytes[19])
+                },
+                icmpv4_checksum: be_u16(msgbytes[2], msgbytes[3]),
+                icmpv4_data: msgbytes[8..].to_vec()
+            }),
             _ => Err(IntoICMPv4MessageError::UnknownType)
         }
     }
