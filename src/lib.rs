@@ -41,12 +41,11 @@ impl HostInfo {
     // TODO: jitter? (std. deviation of times)
 }
 
-pub fn ping_host(host_info: &mut HostInfo) -> Result<(), Error> {
-    // TODO: persist sockets
+pub fn ping_host(host_info: &mut HostInfo, mut socket: &Socket) -> Result<(), Error> {
     // TODO: IPv6
-    let mut socket = Socket::new(Domain::for_address(host_info.host), Type::DGRAM, Some(Protocol::ICMPV4))?;
-    socket.set_read_timeout(Some(Duration::from_secs(2)));
     
+    // Fill the buffer with the system time, then the numbers 0x10 to 0x37
+    // (this is to mimic the packets of the ping(8) command)
     let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
     let secs = time.as_secs();
     let nanos = time.subsec_nanos() as u64;
@@ -55,7 +54,7 @@ pub fn ping_host(host_info: &mut HostInfo) -> Result<(), Error> {
     buf.append(&mut ((0x10 as u8)..=(0x37 as u8)).collect());
     socket.send_to(&buf, &host_info.host.into())?;
     
-    // Echo request send, time to wait for a reply...
+    // Echo request sent, time to wait for a reply...
     let mut rec_buf: [u8; 100] = [0; 100];
     let addr = socket.peek_sender()?;
     let used_bytes = socket.read(&mut rec_buf)?;
@@ -68,4 +67,10 @@ pub fn ping_host(host_info: &mut HostInfo) -> Result<(), Error> {
     }
     
     return Ok(())
+}
+
+pub fn mksocket(host_info: &HostInfo) -> Result<Socket, Error> {
+    let mut socket = Socket::new(Domain::for_address(host_info.host), Type::DGRAM, Some(Protocol::ICMPV4))?;
+    socket.set_read_timeout(Some(Duration::from_secs(2)));
+    Ok(socket)
 }
