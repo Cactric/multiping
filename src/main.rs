@@ -6,7 +6,7 @@ use std::net::IpAddr;
 use std::time::Duration;
 use rand::random;
 
-use multiping::{mksocket, ping_host, HostInfo};
+use multiping::{mksocket, receive_ping, send_ping, HostInfo};
 
 mod icmp;
 
@@ -48,8 +48,14 @@ fn main() {
         let mut maybe_hinfo = HostInfo::new(&h);
         if let Ok(mut hinfo) = maybe_hinfo {
             let mut socket = mksocket(&hinfo).unwrap();
-            match ping_host(&mut hinfo, &mut socket) {
-                Ok(()) => println!("Pinging {} succeeded.", h),
+            match send_ping(&mut hinfo, &socket) {
+                Ok(()) => {
+                    println!("Pinging {} succeeded.", h);
+                    match receive_ping(&mut hinfo, &socket) {
+                        Ok(()) => println!("And getting a response succeeded!"),
+                        Err(e) => println!("Getting a response from {} failed: {}", h, e),
+                    }
+                },
                 Err(e) => println!("Pinging {} failed: {}.", h, e),
             }
         } else {

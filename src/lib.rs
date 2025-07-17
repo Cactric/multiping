@@ -41,7 +41,7 @@ impl HostInfo {
     // TODO: jitter? (std. deviation of times)
 }
 
-pub fn ping_host(host_info: &mut HostInfo, mut socket: &Socket) -> Result<(), Error> {
+pub fn send_ping(host_info: &mut HostInfo, socket: &Socket) -> Result<(), Error> {
     // TODO: IPv6
     
     // Fill the buffer with the system time, then the numbers 0x10 to 0x37
@@ -53,8 +53,10 @@ pub fn ping_host(host_info: &mut HostInfo, mut socket: &Socket) -> Result<(), Er
     buf.append(&mut nanos.to_be_bytes().to_vec());
     buf.append(&mut ((0x10 as u8)..=(0x37 as u8)).collect());
     socket.send_to(&buf, &host_info.host.into())?;
-    
-    // Echo request sent, time to wait for a reply...
+    return Ok(())
+}
+
+pub fn receive_ping(host_info: &HostInfo, mut socket: &Socket) -> Result<(), Error> {
     let mut rec_buf: [u8; 100] = [0; 100];
     let addr = socket.peek_sender()?;
     let used_bytes = socket.read(&mut rec_buf)?;
