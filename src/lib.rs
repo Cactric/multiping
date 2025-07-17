@@ -4,7 +4,7 @@ use std::io::{self, Error, Read};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use socket2::{Domain, Protocol, Socket, Type};
 
-use crate::icmp::{construct_echo_request, ICMPv4Message};
+use crate::icmp::{construct_echo_request, ICMPv4Message, IntoICMPv4MessageError};
 
 mod icmp;
 
@@ -63,6 +63,10 @@ pub fn ping_host(host_info: &mut HostInfo, mut socket: &Socket) -> Result<(), Er
     if let Some(addr4) = addr.as_socket_ipv4() {
         if SocketAddr::V4(addr4) == host_info.host {
             println!("Yay, got a reply from the right host");
+            let maybe_message: Result<ICMPv4Message, IntoICMPv4MessageError> = rec_buf[..used_bytes].try_into();
+            if let Ok(message) = maybe_message {
+                println!("Message received: {:?}", message);
+            }
         }
     }
     
