@@ -47,8 +47,8 @@ pub fn send_ping(host_info: &mut HostInfo, socket: &Socket) -> Result<(), Error>
     // Fill the buffer with the system time, then the numbers 0x10 to 0x37
     // (this is to mimic the packets of the ping(8) command)
     let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-    let secs = time.as_secs();
-    let nanos = time.subsec_nanos() as u64;
+    let secs = time.as_secs().to_be();
+    let nanos = (time.subsec_nanos() as u64 / 1000).to_be();
     let mut buf: Vec<u8> = construct_echo_request(0xbeef, 1, &secs.to_be_bytes());
     buf.append(&mut nanos.to_be_bytes().to_vec());
     buf.append(&mut ((0x10 as u8)..=(0x37 as u8)).collect());
