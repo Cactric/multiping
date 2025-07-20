@@ -68,6 +68,14 @@ pub fn receive_ping(host_info: &HostInfo, mut socket: &Socket) -> Result<(), Err
             let maybe_message: Result<ICMPv4Message, IntoICMPv4MessageError> = rec_buf[..used_bytes].try_into();
             if let Ok(message) = maybe_message {
                 println!("Message received: {:?}", message);
+            } else if let Err(e) = maybe_message {
+                print!("Error parsing response: ");
+                match e {
+                    IntoICMPv4MessageError::UnknownType => println!("unknown type"),
+                    IntoICMPv4MessageError::UnknownCode => println!("unknown code"),
+                    IntoICMPv4MessageError::NotLongEnough => println!("message not long enough"),
+                    IntoICMPv4MessageError::OtherError => println!("other error"),
+                }
             }
         }
     }

@@ -284,6 +284,7 @@ fn be_u32(bytes: &[u8], start: usize) -> u32 {
 pub fn construct_echo_request(identifier: u16, sequence_num: u16, extdata: &[u8]) -> Vec<u8> {
     let msg_type: u8 = 8; // EchoRequest
     let msg_code: u8 = 0;
+    // Note that the id and sequence number will be replaced when using a DGRAM socket (rather than RAW), which is currently what the program does
     let be_id = identifier.to_be_bytes();
     let be_seq = sequence_num.to_be_bytes();
     let mut header = [msg_type, msg_code, 0, 0, be_id[0], be_id[1], be_seq[0], be_seq[1]];
