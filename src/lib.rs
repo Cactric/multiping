@@ -39,6 +39,7 @@ impl HostInfo {
         self.sum_times as f32 / self.pings_sent as f32
     }
     // TODO: jitter? (std. deviation of times)
+    // (I think I'd need to store the sum of the times squared for the std. dev formula)
 }
 
 pub fn send_ping(host_info: &mut HostInfo, socket: &Socket) -> Result<(), Error> {
