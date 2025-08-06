@@ -72,32 +72,42 @@ fn main() {
     
     let recv_enum_host_infos = hinfos.clone().into_iter().enumerate();
     let send_enum_host_infos = hinfos.clone().into_iter().enumerate();
+    let socket = mksocket().unwrap();
+    let socket2 = socket.try_clone().unwrap();
     
     // Spawn threads
     thread::spawn(move || {
-        for (i, h) in send_enum_host_infos {
-            //println!("Host: {:?}", h.1.host);
-            let mut socket = mksocket(&h).unwrap();
-            if let Err(e) = send_ping(&h, &socket) {
-                // Error
-                send_tx.send(StatusUpdate::Error(i, 0)).unwrap();
-            } else {
-                send_tx.send(StatusUpdate::Sent(i)).unwrap();
-            }
-        }
-    });
-    thread::spawn(|| {
-        for (i, h) in recv_enum_host_infos {
-            //println!("Host: {:?}", h.1.host);
-            let mut socket = mksocket(&h).unwrap();
-            match receive_ping(&socket) {
-                Ok((addr, latency)) => {
-                    
-                },
-                Err(e) => {
-                    
+        loop {
+            for (i, h) in send_enum_host_infos.clone() {
+                //println!("Host: {:?}", h.1.host);
+                if let Err(e) = send_ping(&h, &socket) {
+                    // Error
+                    send_tx.send(StatusUpdate::Error(i, 0)).unwrap();
+                } else {
+                    send_tx.send(StatusUpdate::Sent(i)).unwrap();
                 }
             }
+            thread::sleep(Duration::from_secs_f32(args.interval));
+        }
+    });
+    thread::spawn(move || {
+        loop {
+            match receive_ping(&socket2) {
+                Ok((addr, latency)) => {
+                    println!("Latency from {:?}: {}", &addr, &latency);
+                    // Figure out which host the address was from
+                    for (i, h) in recv_enum_host_infos.clone() {
+                        if (h.host == addr) {
+                            recv_tx.send(StatusUpdate::Received(i, latency)).unwrap();
+                            break;
+                        }
+                    }
+                },
+                Err(e) => {
+                    //recv_tx.send(StatusUpdate::Error(i, 0)).unwrap();
+                }
+            }
+            thread::sleep(Duration::from_secs_f32(args.interval));
         }
     });
     

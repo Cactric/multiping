@@ -139,8 +139,9 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
     Err(Error::from(ErrorKind::NotFound))
 }
 
-pub fn mksocket(host_info: &HostInfo) -> Result<Socket, Error> {
-    let mut socket = Socket::new(Domain::for_address(host_info.host), Type::DGRAM, Some(Protocol::ICMPV4))?;
+pub fn mksocket() -> Result<Socket, Error> {
+    let wildcard: SocketAddr = "0.0.0.0:0".parse().unwrap();
+    let mut socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV4))?;
     socket.set_read_timeout(Some(Duration::from_secs(2)));
     Ok(socket)
 }
