@@ -11,25 +11,29 @@ mod icmp;
 
 #[derive(Clone, Debug)]
 pub struct HostInfo {
-    // Times in this struct are in milliseconds? (unless I change them to a Duration)
+    // Times in this struct are in microseconds? (unless I change them to a Duration)
+    host_str: String, // Original user input, used for display
     pub host: SocketAddr,
     pings_sent: u32,
     latest_time: Option<u64>,
     sum_times: u64,
+    sum_squared_times: u64, // sum of the times squared, used for calculating jitter (std. dev of times)
     min_time: Option<u64>,
     max_time: Option<u64>,
     successful: u32,
-    last_error: Option<i32>, /* TODO: replace with errno or struct */
+    last_error: Option<ErrorKind>,
 }
 
 impl HostInfo {
     /// Creates a new HostInfo struct for the specified host. Host can be an IP address or domain name
     pub fn new(host: &str) -> Result<HostInfo, AddrParseError> {
         Ok(HostInfo {
+            host_str: host.to_string(),
             host: SocketAddr::new(host.parse()?, 0),
             pings_sent: 0,
             latest_time: None,
             sum_times: 0,
+            sum_squared_times: 0,
             min_time: None,
             max_time: None,
             successful: 0,
@@ -40,8 +44,11 @@ impl HostInfo {
     pub fn average(&self) -> f32 {
         self.sum_times as f32 / self.pings_sent as f32
     }
-    // TODO: jitter? (std. deviation of times)
-    // (I think I'd need to store the sum of the times squared for the std. dev formula)
+
+    // Jitter is the standard deviation of latency
+    pub fn jitter(&self) -> f32 {
+        f32::sqrt((self.sum_squared_times as f32 / self.pings_sent as f32) - f32::powi(self.average(), 2))
+    }
 }
 
 // Update for the messages passed from the worker threads
@@ -49,7 +56,7 @@ impl HostInfo {
 pub enum StatusUpdate {
     Sent(usize),
     Received(usize, u64),
-    Error(usize, i32), // TODO: replace u32 with an error type
+    Error(usize, ErrorKind),
 }
 
 pub fn update_host_info(update: &StatusUpdate, hinfos: &mut Vec<HostInfo>) {
@@ -62,6 +69,7 @@ pub fn update_host_info(update: &StatusUpdate, hinfos: &mut Vec<HostInfo>) {
             hinfos[*i].successful += 1;
             hinfos[*i].latest_time = Some(*latency);
             hinfos[*i].sum_times += *latency;
+            hinfos[*i].sum_squared_times += (*latency) * (*latency);
             if let Some(min) = hinfos[*i].min_time {
                 if min > *latency {
                     hinfos[*i].min_time = Some(*latency);
@@ -106,7 +114,6 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
     // Try to parse the received bytes
     if let Some(addr4) = addr.as_socket_ipv4() {
         let used_bytes = socket.read(&mut rec_buf)?;
-        // println!("Yay, got a reply from the right host");
         let maybe_message: Result<ICMPv4Message, IntoICMPv4MessageError> = rec_buf[..used_bytes].try_into();
         if let Ok(message) = maybe_message {
             // println!("Message received: {:?}", message);
@@ -144,4 +151,57 @@ pub fn mksocket() -> Result<Socket, Error> {
     let mut socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV4))?;
     socket.set_read_timeout(Some(Duration::from_secs(2)));
     Ok(socket)
+}
+
+pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
+    format!("{:<host_spaces$}| {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} |", "Host", "Time", "Maximum", "Minimum", "Average", "Loss")
+}
+
+pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize) -> String {
+    let mut s = String::new();
+    
+    s.push_str(format!("{:<host_spaces$}| ", host.host_str).as_str());
+    
+    if let Some(error) = host.last_error {
+        s.push_str(error.to_string().as_str());
+        return s;
+    }
+    
+    s.push_str(format_time_cell(stat_spaces, to_sec(host.latest_time)).as_str());
+    s.push_str(format_time_cell(stat_spaces, to_sec(host.max_time)).as_str());
+    s.push_str(format_time_cell(stat_spaces, to_sec(host.min_time)).as_str());
+    s.push_str(format_time_cell(stat_spaces, not_nan(host.average())).as_str());
+    s.push_str(format_percent_cell(stat_spaces, host.successful, host.pings_sent).as_str());
+    
+    return s;
+}
+
+fn to_sec(microseconds: Option<u64>) -> Option<f32> {
+    Some(microseconds? as f32 / 1000000f32)
+}
+
+fn not_nan(num: f32) -> Option<f32> {
+    if num.is_nan() {
+        None
+    } else {
+        Some(num)
+    }
+}
+
+fn format_time_cell(stat_spaces: usize, stat: Option<f32>) -> String {
+    let united_spaces = stat_spaces -  3;
+    if let Some(s) = stat {
+        format!("{:>united_spaces$} ms | ", s)
+    } else {
+        format!("{:>stat_spaces$} | ", "- ")
+    }
+}
+
+fn format_percent_cell(stat_spaces: usize, suc: u32, total: u32) -> String {
+    let united_spaces = stat_spaces - 2;
+    if total == 0 {
+        format!("{:>stat_spaces$} | ", "- ")
+    } else {
+        format!("{:>united_spaces$} % | ", suc as f32 / total as f32)
+    }
 }

@@ -1,6 +1,6 @@
 use console::{Term, style};
 use socket2::{Domain, Protocol, Socket, Type};
-use std::{io::Error, net::SocketAddr, process::exit};
+use std::{io::{Error, Write}, net::SocketAddr, process::exit};
 use clap::Parser;
 use std::net::IpAddr;
 use std::time::Duration;
@@ -8,7 +8,7 @@ use std::sync::mpsc;
 use std::thread;
 use rand::random;
 
-use multiping::{mksocket, receive_ping, send_ping, update_host_info, HostInfo, StatusUpdate};
+use multiping::{mksocket, receive_ping, send_ping, update_host_info, format_host_info, format_header, HostInfo, StatusUpdate};
 
 mod icmp;
 
@@ -35,8 +35,6 @@ fn say_hello() -> Result<(),Error> {
 }
 
 fn main() {
-    //let _ = say_hello();
-    
     // Parse arguments
     let args = Arguments::parse();
 
@@ -50,7 +48,7 @@ fn main() {
     let mut hinfos: Vec<HostInfo> = Vec::new();
     
     // Parse the provided hosts into a vector of HostInfos
-    for h in args.hosts {
+    for h in &args.hosts {
         let mut maybe_hinfo = HostInfo::new(&h);
         if let Ok(mut hinfo) = maybe_hinfo {
             hinfos.push(hinfo);
@@ -70,6 +68,9 @@ fn main() {
         }
     }
     
+    let _ = update_display(args.statistics, &hinfos);
+    return;
+    
     let recv_enum_host_infos = hinfos.clone().into_iter().enumerate();
     let send_enum_host_infos = hinfos.clone().into_iter().enumerate();
     let socket = mksocket().unwrap();
@@ -82,7 +83,7 @@ fn main() {
                 //println!("Host: {:?}", h.1.host);
                 if let Err(e) = send_ping(&h, &socket) {
                     // Error
-                    send_tx.send(StatusUpdate::Error(i, 0)).unwrap();
+                    send_tx.send(StatusUpdate::Error(i, e.kind())).unwrap();
                 } else {
                     send_tx.send(StatusUpdate::Sent(i)).unwrap();
                 }
@@ -96,18 +97,23 @@ fn main() {
                 Ok((addr, latency)) => {
                     println!("Latency from {:?}: {}", &addr, &latency);
                     // Figure out which host the address was from
+                    let mut found = false;
                     for (i, h) in recv_enum_host_infos.clone() {
                         if (h.host == addr) {
                             recv_tx.send(StatusUpdate::Received(i, latency)).unwrap();
+                            found = true;
                             break;
                         }
                     }
+                    if !found {
+                        eprintln!("Host not found: addr = {}", addr)
+                    }
                 },
                 Err(e) => {
-                    //recv_tx.send(StatusUpdate::Error(i, 0)).unwrap();
+                    //recv_tx.send(StatusUpdate::Error(i, e.kind())).unwrap();
+                    eprintln!("Error listening to socket: {}", e);
                 }
             }
-            thread::sleep(Duration::from_secs_f32(args.interval));
         }
     });
     
@@ -116,4 +122,25 @@ fn main() {
         println!("Update: {:?}", update);
         update_host_info(&update, &mut hinfos);
     }
+}
+
+fn update_display(stats: bool, hinfos: &Vec<HostInfo>) -> Result<(), Error> {
+    let term = Term::buffered_stdout();
+    term.clear_screen()?;
+    term.hide_cursor()?;
+    
+    let host_spaces = 19;
+    let stat_spaces = 8;
+    
+    let header_line = format_header(host_spaces, stat_spaces);
+    term.write_line(header_line.as_str())?;
+    
+    for host in hinfos {
+        let line = format_host_info(host, host_spaces, stat_spaces);
+        term.write_line(line.as_str())?;
+    }
+    
+    term.flush();
+    
+    Ok(())
 }
