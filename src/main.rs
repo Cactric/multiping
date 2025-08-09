@@ -21,10 +21,6 @@ struct Arguments {
     /// How often the hosts should be pinged
     #[arg(short = 'i', long, default_value_t = 1.0)]
     interval: f32,
-    
-    /// If specified, min, max and average latency stats are shown
-    #[arg(short, long)]
-    statistics: bool,
 }
 
 fn main() {
@@ -50,7 +46,7 @@ fn main() {
         }
     }
     
-    let _ = update_display(args.statistics, &hinfos);
+    let _ = update_display(&hinfos);
     return;
     
     let recv_enum_host_infos = hinfos.clone().into_iter().enumerate();
@@ -106,7 +102,7 @@ fn main() {
     }
 }
 
-fn update_display(stats: bool, hinfos: &Vec<HostInfo>) -> Result<(), Error> {
+fn update_display(hinfos: &Vec<HostInfo>) -> Result<(), Error> {
     let term = Term::buffered_stdout();
     term.clear_screen()?;
     term.hide_cursor()?;
