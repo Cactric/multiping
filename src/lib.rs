@@ -156,7 +156,16 @@ pub fn mksocket() -> Result<Socket, Error> {
 const SEPARATOR: &str = " | ";
 
 pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
-    format!("{:<host_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | ", "Host", "Time", "Maximum", "Minimum", "Average", "Loss")
+    let mut s = String::new();
+    
+    s.push_str(format!("{:<host_spaces$}", "Host").as_str());
+    s.push_str(SEPARATOR);
+    for heading in ["Time", "Maximum", "Minimum", "Average", "Loss"] {
+        s.push_str(format!("{:<stat_spaces$}", heading).as_str());
+        s.push_str(SEPARATOR);
+    }
+    
+    s
 }
 
 pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize) -> String {
@@ -170,14 +179,10 @@ pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize)
         return s;
     }
     
-    s.push_str(format_time_cell(stat_spaces, to_sec(host.latest_time)).as_str());
-    s.push_str(SEPARATOR);
-    s.push_str(format_time_cell(stat_spaces, to_sec(host.max_time)).as_str());
-    s.push_str(SEPARATOR);
-    s.push_str(format_time_cell(stat_spaces, to_sec(host.min_time)).as_str());
-    s.push_str(SEPARATOR);
-    s.push_str(format_time_cell(stat_spaces, not_nan(host.average())).as_str());
-    s.push_str(SEPARATOR);
+    for stat in [to_sec(host.latest_time), to_sec(host.max_time), to_sec(host.min_time), not_nan(host.average())] {
+        s.push_str(format_time_cell(stat_spaces, stat).as_str());
+        s.push_str(SEPARATOR);
+    }
     s.push_str(format_percent_cell(stat_spaces, host.successful, host.pings_sent).as_str());
     s.push_str(SEPARATOR);
     
