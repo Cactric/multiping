@@ -42,12 +42,12 @@ impl HostInfo {
     }
     
     pub fn average(&self) -> f32 {
-        self.sum_times as f32 / self.pings_sent as f32
+        self.sum_times as f32 / (self.pings_sent as f32 * 1000f32)
     }
 
     // Jitter is the standard deviation of latency
     pub fn jitter(&self) -> f32 {
-        f32::sqrt((self.sum_squared_times as f32 / self.pings_sent as f32) - f32::powi(self.average(), 2))
+        f32::sqrt((self.sum_squared_times as f32 / (self.pings_sent as f32)) - f32::powi(self.average(), 2))
     }
 }
 
@@ -79,7 +79,7 @@ pub fn update_host_info(update: &StatusUpdate, hinfos: &mut Vec<HostInfo>) {
             }
             
             if let Some(max) = hinfos[*i].max_time {
-                if max > *latency {
+                if max < *latency {
                     hinfos[*i].max_time = Some(*latency);
                 }
             } else {
@@ -170,6 +170,7 @@ pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
 
 pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize) -> String {
     let mut s = String::new();
+    eprintln!("{:?}", host);
     
     s.push_str(format!("{:<host_spaces$}", host.host_str).as_str());
     s.push_str(SEPARATOR);
@@ -189,19 +190,19 @@ pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize)
     return s;
 }
 
-fn to_sec(microseconds: Option<u64>) -> Option<f32> {
-    Some(microseconds? as f32 / 1000000f32)
+fn to_sec(microseconds: Option<u64>) -> Option<u64> {
+    Some(microseconds? / 1000)
 }
 
-fn not_nan(num: f32) -> Option<f32> {
+fn not_nan(num: f32) -> Option<u64> {
     if num.is_nan() {
         None
     } else {
-        Some(num)
+        Some(num as u64)
     }
 }
 
-fn format_time_cell(stat_spaces: usize, stat: Option<f32>) -> String {
+fn format_time_cell(stat_spaces: usize, stat: Option<u64>) -> String {
     let united_spaces = stat_spaces -  3;
     if let Some(s) = stat {
         format!("{:>united_spaces$} ms", s)
