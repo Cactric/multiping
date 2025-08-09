@@ -46,9 +46,6 @@ fn main() {
         }
     }
     
-    let _ = update_display(&hinfos);
-    return;
-    
     let recv_enum_host_infos = hinfos.clone().into_iter().enumerate();
     let send_enum_host_infos = hinfos.clone().into_iter().enumerate();
     let socket = mksocket().unwrap();
@@ -99,6 +96,7 @@ fn main() {
     for update in rx {
         println!("Update: {:?}", update);
         update_host_info(&update, &mut hinfos);
+        update_display(&hinfos);
     }
 }
 
