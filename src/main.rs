@@ -27,13 +27,6 @@ struct Arguments {
     statistics: bool,
 }
 
-fn say_hello() -> Result<(),Error> {
-    let term = Term::stdout();
-    term.clear_screen()?;
-    term.write_line(&style("hello!").cyan().to_string())?;
-    Ok(())
-}
-
 fn main() {
     // Parse arguments
     let args = Arguments::parse();
@@ -52,17 +45,6 @@ fn main() {
         let mut maybe_hinfo = HostInfo::new(&h);
         if let Ok(mut hinfo) = maybe_hinfo {
             hinfos.push(hinfo);
-            /*let mut socket = mksocket(&hinfo).unwrap();
-            match send_ping(&hinfo, &tx, &socket) {
-                Ok(()) => {
-                    println!("Pinging {} succeeded.", h);
-                    match receive_ping(&hinfo, &tx, &socket) {
-                        Ok(()) => println!("And getting a response succeeded!"),
-                        Err(e) => println!("Getting a response from {} failed: {}", h, e),
-                    }
-                },
-                Err(e) => println!("Pinging {} failed: {}.", h, e),
-            }*/
         } else {
             eprintln!("Failed to parse {}", h);
         }
@@ -140,6 +122,7 @@ fn update_display(stats: bool, hinfos: &Vec<HostInfo>) -> Result<(), Error> {
         term.write_line(line.as_str())?;
     }
     
+    term.show_cursor()?;
     term.flush();
     
     Ok(())
