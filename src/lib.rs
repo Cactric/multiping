@@ -153,14 +153,17 @@ pub fn mksocket() -> Result<Socket, Error> {
     Ok(socket)
 }
 
+const SEPARATOR: &str = " | ";
+
 pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
-    format!("{:<host_spaces$}| {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} |", "Host", "Time", "Maximum", "Minimum", "Average", "Loss")
+    format!("{:<host_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | {:<stat_spaces$} | ", "Host", "Time", "Maximum", "Minimum", "Average", "Loss")
 }
 
 pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize) -> String {
     let mut s = String::new();
     
-    s.push_str(format!("{:<host_spaces$}| ", host.host_str).as_str());
+    s.push_str(format!("{:<host_spaces$}", host.host_str).as_str());
+    s.push_str(SEPARATOR);
     
     if let Some(error) = host.last_error {
         s.push_str(error.to_string().as_str());
@@ -168,10 +171,15 @@ pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize)
     }
     
     s.push_str(format_time_cell(stat_spaces, to_sec(host.latest_time)).as_str());
+    s.push_str(SEPARATOR);
     s.push_str(format_time_cell(stat_spaces, to_sec(host.max_time)).as_str());
+    s.push_str(SEPARATOR);
     s.push_str(format_time_cell(stat_spaces, to_sec(host.min_time)).as_str());
+    s.push_str(SEPARATOR);
     s.push_str(format_time_cell(stat_spaces, not_nan(host.average())).as_str());
+    s.push_str(SEPARATOR);
     s.push_str(format_percent_cell(stat_spaces, host.successful, host.pings_sent).as_str());
+    s.push_str(SEPARATOR);
     
     return s;
 }
@@ -191,17 +199,17 @@ fn not_nan(num: f32) -> Option<f32> {
 fn format_time_cell(stat_spaces: usize, stat: Option<f32>) -> String {
     let united_spaces = stat_spaces -  3;
     if let Some(s) = stat {
-        format!("{:>united_spaces$} ms | ", s)
+        format!("{:>united_spaces$} ms", s)
     } else {
-        format!("{:>stat_spaces$} | ", "- ")
+        format!("{:>stat_spaces$}", "- ")
     }
 }
 
 fn format_percent_cell(stat_spaces: usize, suc: u32, total: u32) -> String {
     let united_spaces = stat_spaces - 2;
     if total == 0 {
-        format!("{:>stat_spaces$} | ", "- ")
+        format!("{:>stat_spaces$}", "- ")
     } else {
-        format!("{:>united_spaces$} % | ", suc as f32 / total as f32)
+        format!("{:>united_spaces$} %", suc as f32 / total as f32)
     }
 }
