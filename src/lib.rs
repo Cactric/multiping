@@ -17,7 +17,7 @@ pub struct HostInfo {
     pings_sent: u32,
     latest_time: Option<u64>,
     sum_times: u64,
-    sum_squared_times: u64, // sum of the times squared, used for calculating jitter (std. dev of times)
+    sum_squared_times_ms: f64, // sum of the times squared, used for calculating jitter (std. dev of times)
     min_time: Option<u64>,
     max_time: Option<u64>,
     successful: u32,
@@ -33,7 +33,7 @@ impl HostInfo {
             pings_sent: 0,
             latest_time: None,
             sum_times: 0,
-            sum_squared_times: 0,
+            sum_squared_times_ms: 0.0,
             min_time: None,
             max_time: None,
             successful: 0,
@@ -47,7 +47,7 @@ impl HostInfo {
 
     // Jitter is the standard deviation of latency
     pub fn jitter(&self) -> f32 {
-        f32::sqrt((self.sum_squared_times as f32 / (self.pings_sent as f32)) - f32::powi(self.average(), 2))
+        f32::sqrt((self.sum_squared_times_ms as f32 / (self.pings_sent as f32)) - f32::powi(self.average(), 2))
     }
 }
 
@@ -69,7 +69,8 @@ pub fn update_host_info(update: &StatusUpdate, hinfos: &mut Vec<HostInfo>) {
             hinfos[*i].successful += 1;
             hinfos[*i].latest_time = Some(*latency);
             hinfos[*i].sum_times += *latency;
-            hinfos[*i].sum_squared_times += (*latency) * (*latency);
+            let latency_ms: f64 = *latency as f64 / 1000f64; 
+            hinfos[*i].sum_squared_times_ms += (latency_ms) * (latency_ms);
             if let Some(min) = hinfos[*i].min_time {
                 if min > *latency {
                     hinfos[*i].min_time = Some(*latency);
