@@ -160,7 +160,7 @@ pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
     
     s.push_str(format!("{:<host_spaces$}", "Host").as_str());
     s.push_str(SEPARATOR);
-    for heading in ["Time", "Maximum", "Minimum", "Average", "Jitter", "Loss"] {
+    for heading in ["Time", "Minimum", "Average", "Maximum", "Jitter", "Loss"] {
         s.push_str(format!("{:<stat_spaces$}", heading).as_str());
         s.push_str(SEPARATOR);
     }
@@ -180,7 +180,7 @@ pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize)
         return s;
     }
     
-    for stat in [to_sec(host.latest_time), to_sec(host.max_time), to_sec(host.min_time), not_nan(host.average()), not_nan(host.jitter())] {
+    for stat in [to_sec(host.latest_time), to_sec(host.min_time), not_nan(host.average()), to_sec(host.max_time), not_nan(host.jitter())] {
         s.push_str(format_time_cell(stat_spaces, stat).as_str());
         s.push_str(SEPARATOR);
     }
