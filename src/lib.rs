@@ -150,7 +150,6 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
 pub fn mksocket() -> Result<Socket, Error> {
     let wildcard: SocketAddr = "0.0.0.0:0".parse().unwrap();
     let mut socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV4))?;
-    socket.set_read_timeout(Some(Duration::from_secs(2)));
     Ok(socket)
 }
 
