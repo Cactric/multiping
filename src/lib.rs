@@ -176,6 +176,7 @@ pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize)
     s.push_str(SEPARATOR);
     
     if let Some(error) = host.last_error {
+        s.push_str("Error: ");
         s.push_str(error.to_string().as_str());
         return s;
     }
@@ -187,7 +188,7 @@ pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize)
     s.push_str(format_percent_cell(stat_spaces, host.successful, host.pings_sent).as_str());
     s.push_str(SEPARATOR);
     
-    return s;
+    s
 }
 
 fn to_sec(microseconds: Option<u64>) -> Option<u64> {
@@ -216,6 +217,6 @@ fn format_percent_cell(stat_spaces: usize, suc: u32, total: u32) -> String {
     if total == 0 {
         format!("{:>stat_spaces$}", "- ")
     } else {
-        format!("{:>united_spaces$} %", suc as f32 / total as f32)
+        format!("{:>united_spaces$} %", ((total - suc) * 100) / total)
     }
 }

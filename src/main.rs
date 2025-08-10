@@ -94,7 +94,6 @@ fn main() {
     
     // Listen for updates
     for update in rx {
-        println!("Update: {:?}", update);
         update_host_info(&update, &mut hinfos);
         update_display(&hinfos);
     }
