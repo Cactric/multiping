@@ -18,7 +18,7 @@ struct Arguments {
     /// Which hosts (IP addresses or domain names) to ping
     hosts: Vec<String>,
     
-    /// How often the hosts should be pinged
+    /// How often the hosts should be pinged (in seconds)
     #[arg(short = 'i', long, default_value_t = 1.0)]
     interval: f32,
 }
