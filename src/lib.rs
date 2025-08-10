@@ -215,7 +215,7 @@ fn format_time_cell(stat_spaces: usize, stat: Option<u64>) -> String {
 
 fn format_percent_cell(stat_spaces: usize, suc: u32, total: u32) -> String {
     let united_spaces = stat_spaces - 2;
-    if total == 0 {
+    if total == 0 || suc > total {
         format!("{:>stat_spaces$}", "- ")
     } else {
         format!("{:>united_spaces$} %", ((total - suc) * 100) / total)
