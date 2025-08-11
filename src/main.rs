@@ -106,7 +106,6 @@ fn main() {
     }
     
     term.show_cursor();
-    term.flush();
 }
 
 fn update_display(term: &Term, hinfos: &Vec<HostInfo>, colour: bool) -> Result<(), Error> {
