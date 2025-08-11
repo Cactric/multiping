@@ -96,17 +96,21 @@ fn main() {
         }
     });
     
+    let mut term = Term::buffered_stdout();
+    term.hide_cursor();
+    
     // Listen for updates
     for update in rx {
         update_host_info(&update, &mut hinfos);
-        update_display(&hinfos, args.colour.unwrap_or(true));
+        update_display(&term, &hinfos, args.colour.unwrap_or(true));
     }
+    
+    term.show_cursor();
+    term.flush();
 }
 
-fn update_display(hinfos: &Vec<HostInfo>, colour: bool) -> Result<(), Error> {
-    let term = Term::buffered_stdout();
+fn update_display(term: &Term, hinfos: &Vec<HostInfo>, colour: bool) -> Result<(), Error> {
     term.clear_screen()?;
-    term.hide_cursor()?;
     
     let host_spaces = 19;
     let stat_spaces = 8;
