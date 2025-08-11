@@ -3,6 +3,7 @@ use std::net::{AddrParseError, IpAddr, SocketAddr, SocketAddrV4};
 use std::io::{self, Error, Read, ErrorKind};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::sync::mpsc;
+use console::style;
 use socket2::{Domain, Protocol, Socket, Type};
 
 use crate::icmp::{construct_echo_request, ICMPv4Message, IntoICMPv4MessageError};
@@ -168,7 +169,7 @@ pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
     s
 }
 
-pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize) -> String {
+pub fn format_host_info(host: &HostInfo, colour: bool, host_spaces: usize, stat_spaces: usize) -> String {
     let mut s = String::new();
     eprintln!("{:?}", host);
     
@@ -176,16 +177,20 @@ pub fn format_host_info(host: &HostInfo, host_spaces: usize, stat_spaces: usize)
     s.push_str(SEPARATOR);
     
     if let Some(error) = host.last_error {
-        s.push_str("Error: ");
+        for x in 0..=stat_spaces - 6 {
+            s.push_str(" ");
+        }
+        s.push_str(colour_error("Error", colour).as_str());
+        s.push_str(": ");
         s.push_str(error.to_string().as_str());
         return s;
     }
     
     for stat in [to_sec(host.latest_time), to_sec(host.min_time), not_nan(host.average()), to_sec(host.max_time), not_nan(host.jitter())] {
-        s.push_str(format_time_cell(stat_spaces, stat).as_str());
+        s.push_str(format_time_cell(colour, stat_spaces, stat).as_str());
         s.push_str(SEPARATOR);
     }
-    s.push_str(format_percent_cell(stat_spaces, host.successful, host.pings_sent).as_str());
+    s.push_str(format_colour_percent(colour, stat_spaces, host.successful, host.pings_sent).as_str());
     s.push_str(SEPARATOR);
     
     s
@@ -203,12 +208,63 @@ fn not_nan(num: f32) -> Option<u64> {
     }
 }
 
-fn format_time_cell(stat_spaces: usize, stat: Option<u64>) -> String {
+fn colour_error(msg: &str, colour: bool) -> String {
+    if colour {
+        style(msg).red().to_string()
+    } else {
+        msg.to_string()
+    }
+}
+
+fn colour_ok(msg: &str, colour: bool) -> String {
+    if colour {
+        style(msg).green().to_string()
+    } else {
+        msg.to_string()
+    }
+}
+
+fn colour_amber(msg: &str, colour: bool) -> String {
+    if colour {
+        style(msg).yellow().to_string()
+    } else {
+        msg.to_string()
+    }
+}
+
+fn format_colour_percent(colour: bool, stat_spaces: usize, suc: u32, total: u32) -> String {
+    let cell_string = format_percent_cell(stat_spaces, suc, total);
+    if total == 0 || suc > total {
+        return colour_error(&cell_string, colour);
+    }
+    
+    let percent = (total - suc) * 100 / total;
+    if !colour {
+        return cell_string;
+    }
+    if percent < 10 {
+        return colour_ok(&cell_string, colour);
+    } else if percent <= 50 {
+        return colour_amber(&cell_string, colour);
+    } else { // greater than 50% loss (etc.)
+        return colour_error(&cell_string, colour);
+    }
+}
+
+fn format_time_cell(colour: bool, stat_spaces: usize, stat: Option<u64>) -> String {
     let united_spaces = stat_spaces -  3;
     if let Some(s) = stat {
-        format!("{:>united_spaces$} ms", s)
+        let cell = format!("{:>united_spaces$} ms", s);
+        if colour {
+            return style(cell).green().to_string();
+        }
+        cell
     } else {
-        format!("{:>stat_spaces$}", "- ")
+        let cell = format!("{:>stat_spaces$}", "- ");
+        if colour {
+            return style(cell).red().to_string();
+        }
+        cell
     }
 }
 

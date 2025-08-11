@@ -21,6 +21,10 @@ struct Arguments {
     /// How often the hosts should be pinged (in seconds)
     #[arg(short = 'i', long, default_value_t = 1.0)]
     interval: f32,
+    
+    /// Whether colours are used in the output
+    #[arg(short = 'c', long)]
+    colour: Option<bool>,
 }
 
 fn main() {
@@ -95,11 +99,11 @@ fn main() {
     // Listen for updates
     for update in rx {
         update_host_info(&update, &mut hinfos);
-        update_display(&hinfos);
+        update_display(&hinfos, args.colour.unwrap_or(true));
     }
 }
 
-fn update_display(hinfos: &Vec<HostInfo>) -> Result<(), Error> {
+fn update_display(hinfos: &Vec<HostInfo>, colour: bool) -> Result<(), Error> {
     let term = Term::buffered_stdout();
     term.clear_screen()?;
     term.hide_cursor()?;
@@ -111,7 +115,7 @@ fn update_display(hinfos: &Vec<HostInfo>) -> Result<(), Error> {
     term.write_line(header_line.as_str())?;
     
     for host in hinfos {
-        let line = format_host_info(host, host_spaces, stat_spaces);
+        let line = format_host_info(host, colour, host_spaces, stat_spaces);
         term.write_line(line.as_str())?;
     }
     
