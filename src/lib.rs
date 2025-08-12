@@ -3,6 +3,8 @@ use std::net::{AddrParseError, IpAddr, SocketAddr, SocketAddrV4};
 use std::io::{self, Error, Read, ErrorKind};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::sync::mpsc;
+use std::net::ToSocketAddrs;
+use std::net::SocketAddr::V6;
 use console::style;
 use socket2::{Domain, Protocol, Socket, Type};
 
@@ -27,10 +29,25 @@ pub struct HostInfo {
 
 impl HostInfo {
     /// Creates a new HostInfo struct for the specified host. Host can be an IP address or domain name
-    pub fn new(host: &str) -> Result<HostInfo, AddrParseError> {
+    pub fn new(host: &str) -> Result<HostInfo, Error> {
+        let mut possible_hosts = (host, 0).to_socket_addrs()?;
+        let mut chosen_host: Option<SocketAddr> = None;
+        
+        for h in possible_hosts {
+            // IPv6 isn't supported yet...
+            if let V6(_) = h {
+                continue;
+            }
+            // I guess we found one
+            chosen_host = Some(h);
+        }
+        if let None = chosen_host {
+            return Err(Error::from(ErrorKind::NotFound));
+        }
+        
         Ok(HostInfo {
             host_str: host.to_string(),
-            host: SocketAddr::new(host.parse()?, 0),
+            host: chosen_host.unwrap(),
             pings_sent: 0,
             latest_time: None,
             sum_times: 0,
