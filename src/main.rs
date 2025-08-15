@@ -1,12 +1,10 @@
-use console::{Term, style};
-use socket2::{Domain, Protocol, Socket, Type};
-use std::{io::{Error, Write}, net::SocketAddr, process::exit};
+use console::Term;
+use std::{io::Error, process::exit};
 use clap::Parser;
-use std::net::IpAddr;
 use std::time::Duration;
 use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
 use std::thread;
-use rand::random;
 
 use multiping::{mksocket, receive_ping, send_ping, update_host_info, format_host_info, format_header, HostInfo, StatusUpdate};
 
@@ -42,8 +40,8 @@ fn main() {
     
     // Parse the provided hosts into a vector of HostInfos
     for h in &args.hosts {
-        let mut maybe_hinfo = HostInfo::new(&h);
-        if let Ok(mut hinfo) = maybe_hinfo {
+        let maybe_hinfo = HostInfo::new(&h);
+        if let Ok(hinfo) = maybe_hinfo {
             hinfos.push(hinfo);
         } else {
             eprintln!("Failed to parse {}", h);
@@ -78,7 +76,7 @@ fn main() {
                     // Figure out which host the address was from
                     let mut found = false;
                     for (i, h) in recv_enum_host_infos.clone() {
-                        if (h.host == addr) {
+                        if h.host == addr {
                             recv_tx.send(StatusUpdate::Received(i, latency)).unwrap();
                             found = true;
                             break;
@@ -96,16 +94,23 @@ fn main() {
         }
     });
     
-    let mut term = Term::buffered_stdout();
-    term.hide_cursor();
+    if let Err(e) = display_loop(rx, hinfos, args) {
+        eprintln!("Error in display loop {}", e);
+    }
+}
+
+fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, args: Arguments) -> Result<(), Error> {
+    let term = Term::buffered_stdout();
+    term.hide_cursor()?;
     
     // Listen for updates
     for update in rx {
         update_host_info(&update, &mut hinfos);
-        update_display(&term, &hinfos, args.colour.unwrap_or(true));
+        update_display(&term, &hinfos, args.colour.unwrap_or(true))?;
     }
     
-    term.show_cursor();
+    term.show_cursor()?;
+    Ok(())
 }
 
 fn update_display(term: &Term, hinfos: &Vec<HostInfo>, colour: bool) -> Result<(), Error> {
@@ -123,7 +128,7 @@ fn update_display(term: &Term, hinfos: &Vec<HostInfo>, colour: bool) -> Result<(
     }
     
     term.show_cursor()?;
-    term.flush();
+    term.flush()?;
     
     Ok(())
 }

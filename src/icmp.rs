@@ -2,12 +2,14 @@
 // Source: https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol
 // TODO: ICMPv6
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum ICMPMessage {
     ICMPv4(ICMPv4Message),
     ICMPv6(ICMPv6Message),
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ICMPv4Message {
     /// Type of control message, including the code
@@ -18,6 +20,7 @@ pub struct ICMPv4Message {
     pub icmpv4_data: Vec<u8>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum ICMPv4Type {
     EchoReply { // #0
@@ -68,6 +71,7 @@ pub enum ICMPv4Type {
     // (except for Extended Echo Request/Reply)
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum DestinationUnreachableCode {
     NetworkUnreachable, // #0
@@ -88,6 +92,7 @@ pub enum DestinationUnreachableCode {
     PrecedenceCuttoffInEffect, // #15
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum RedirectMsgCode {
     Network, // #0
@@ -96,12 +101,14 @@ pub enum RedirectMsgCode {
     ToSAndHost, // #3
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TimeExceededCode {
     ExpiredInTransit, // #0
     FragmentReassemblyTimeExceeded, // #1
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum BadIPHeaderCode {
     PointerIndicatesError, // #0
@@ -109,6 +116,7 @@ pub enum BadIPHeaderCode {
     BadLength, // #2
 }
 
+#[allow(dead_code)]
 pub enum IntoICMPv4MessageError {
     UnknownType,
     UnknownCode,
@@ -116,6 +124,7 @@ pub enum IntoICMPv4MessageError {
     OtherError,
 }
 
+#[allow(dead_code)]
 impl TryFrom<&[u8]> for ICMPv4Message {
     type Error = IntoICMPv4MessageError;
 
@@ -259,7 +268,7 @@ pub fn parse_unreachable_code(value: u8) -> Result<DestinationUnreachableCode, I
 }
 
 pub fn parse_redirect_code(value: u8) -> Result<RedirectMsgCode, IntoICMPv4MessageError> {
-    match (value) {
+    match value {
         0 => Ok(RedirectMsgCode::Network),
         1 => Ok(RedirectMsgCode::Host),
         2 => Ok(RedirectMsgCode::ToSAndNetwork),
@@ -281,6 +290,7 @@ fn be_u32(bytes: &[u8], start: usize) -> u32 {
 
 /// Construct an echo request message
 /// NOTE: identifier and sequence_num here use normal endianness for your platform
+#[allow(dead_code)]
 pub fn construct_echo_request(identifier: u16, sequence_num: u16, extdata: &[u8]) -> Vec<u8> {
     let msg_type: u8 = 8; // EchoRequest
     let msg_code: u8 = 0;
@@ -295,13 +305,14 @@ pub fn construct_echo_request(identifier: u16, sequence_num: u16, extdata: &[u8]
 }
 
 /// Populates the checksum in the header
+#[allow(dead_code)]
 pub fn populate_checksum(header: &mut [u8]) {
     let mut total: u32 = 0;
     for b in &mut *header {
         total += *b as u32;
     }
     while !(total < 0xffff) {
-        total += (total >> 16)
+        total += total >> 16
     }
     let final_checksum: [u8; 2] = (!total as u16).to_be_bytes();
     header[2] = final_checksum[0];

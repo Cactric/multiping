@@ -8,8 +8,3 @@ clap = { version = "4.5.40", features = ["derive"] }
 console = "0.16.0"
 rand = "0.9.1"
 socket2 = "0.5.10"
-
-# Shut some warnings up while I'm starting off
-# TODO: remove these
-[lints.rust]
-unused = "allow"

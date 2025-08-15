@@ -1,8 +1,6 @@
-use std::mem::MaybeUninit;
-use std::net::{AddrParseError, IpAddr, SocketAddr, SocketAddrV4};
-use std::io::{self, Error, Read, ErrorKind};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use std::sync::mpsc;
+use std::net::SocketAddr;
+use std::io::{Error, Read, ErrorKind};
+use std::time::SystemTime;
 use std::net::ToSocketAddrs;
 use std::net::SocketAddr::V6;
 use console::style;
@@ -30,7 +28,7 @@ pub struct HostInfo {
 impl HostInfo {
     /// Creates a new HostInfo struct for the specified host. Host can be an IP address or domain name
     pub fn new(host: &str) -> Result<HostInfo, Error> {
-        let mut possible_hosts = (host, 0).to_socket_addrs()?;
+        let possible_hosts = (host, 0).to_socket_addrs()?;
         let mut chosen_host: Option<SocketAddr> = None;
         
         for h in possible_hosts {
@@ -118,7 +116,7 @@ pub fn send_ping(host_info: &HostInfo, socket: &Socket) -> Result<(), Error> {
     // (this is to mimic the packets of the ping(8) command)
     let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
     let secs = time.as_secs();
-    let micros = (time.subsec_nanos() as u64 / 1000);
+    let micros = time.subsec_nanos() as u64 / 1000;
     let mut buf: Vec<u8> = construct_echo_request(0xbeef, 1, &secs.to_be_bytes());
     buf.append(&mut micros.to_be_bytes().to_vec());
     buf.append(&mut ((0x10 as u8)..=(0x37 as u8)).collect());
@@ -167,7 +165,7 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
 
 pub fn mksocket() -> Result<Socket, Error> {
     let wildcard: SocketAddr = "0.0.0.0:0".parse().unwrap();
-    let mut socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV4))?;
+    let socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV4))?;
     Ok(socket)
 }
 
@@ -194,7 +192,7 @@ pub fn format_host_info(host: &HostInfo, colour: bool, host_spaces: usize, stat_
     s.push_str(SEPARATOR);
     
     if let Some(error) = host.last_error {
-        for x in 0..=stat_spaces - 6 {
+        for _x in 0..=stat_spaces - 6 {
             s.push_str(" ");
         }
         s.push_str(colour_error("Error", colour).as_str());
