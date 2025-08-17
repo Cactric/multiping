@@ -58,12 +58,12 @@ impl HostInfo {
     }
     
     pub fn average(&self) -> f32 {
-        self.sum_times as f32 / (self.pings_sent as f32 * 1000f32)
+        self.sum_times as f32 / (self.successful as f32 * 1000f32)
     }
 
     // Jitter is the standard deviation of latency
     pub fn jitter(&self) -> f32 {
-        f32::sqrt((self.sum_squared_times_ms as f32 / (self.pings_sent as f32)) - f32::powi(self.average(), 2))
+        f32::sqrt((self.sum_squared_times_ms as f32 / (self.successful as f32)) - f32::powi(self.average(), 2))
     }
 }
 
