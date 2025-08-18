@@ -8,7 +8,7 @@ use std::thread;
 
 use multiping::{mksocket, receive_ping, send_ping, update_host_info, format_host_info, format_header, HostInfo, StatusUpdate};
 
-mod icmp;
+pub mod icmp;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -29,7 +29,7 @@ fn main() {
     // Parse arguments
     let args = Arguments::parse();
 
-    if args.hosts.len() < 1 {
+    if args.hosts.is_empty() {
         eprintln!("You need to specify hosts on the command line.\nExample: multiping 127.0.0.1");
         exit(1);
     }
@@ -40,7 +40,7 @@ fn main() {
     
     // Parse the provided hosts into a vector of HostInfos
     for h in &args.hosts {
-        let maybe_hinfo = HostInfo::new(&h);
+        let maybe_hinfo = HostInfo::new(h);
         if let Ok(hinfo) = maybe_hinfo {
             hinfos.push(hinfo);
         } else {

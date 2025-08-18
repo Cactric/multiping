@@ -6,9 +6,9 @@ use std::net::SocketAddr::V6;
 use console::style;
 use socket2::{Domain, Protocol, Socket, Type};
 
-use crate::icmp::{construct_echo_request, ICMPv4Message, IntoICMPv4MessageError};
+use crate::icmp::*;
 
-mod icmp;
+pub mod icmp;
 
 #[derive(Clone, Debug)]
 pub struct HostInfo {
@@ -39,7 +39,7 @@ impl HostInfo {
             // I guess we found one
             chosen_host = Some(h);
         }
-        if let None = chosen_host {
+        if chosen_host.is_none() {
             return Err(Error::from(ErrorKind::NotFound));
         }
         
@@ -75,7 +75,7 @@ pub enum StatusUpdate {
     Error(usize, ErrorKind),
 }
 
-pub fn update_host_info(update: &StatusUpdate, hinfos: &mut Vec<HostInfo>) {
+pub fn update_host_info(update: &StatusUpdate, hinfos: &mut [HostInfo]) {
     match update {
         StatusUpdate::Sent(i) => {
             hinfos[*i].pings_sent += 1;
@@ -119,9 +119,9 @@ pub fn send_ping(host_info: &HostInfo, socket: &Socket) -> Result<(), Error> {
     let micros = time.subsec_nanos() as u64 / 1000;
     let mut buf: Vec<u8> = construct_echo_request(0xbeef, 1, &secs.to_be_bytes());
     buf.append(&mut micros.to_be_bytes().to_vec());
-    buf.append(&mut ((0x10 as u8)..=(0x37 as u8)).collect());
+    buf.append(&mut (0x10_u8..=0x37_u8).collect());
     socket.send_to(&buf, &host_info.host.into())?;
-    return Ok(())
+    Ok(())
 }
 
 pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
@@ -193,7 +193,7 @@ pub fn format_host_info(host: &HostInfo, colour: bool, host_spaces: usize, stat_
     
     if let Some(error) = host.last_error {
         for _x in 0..=stat_spaces - 6 {
-            s.push_str(" ");
+            s.push(' ');
         }
         s.push_str(colour_error("Error", colour).as_str());
         s.push_str(": ");
@@ -258,11 +258,11 @@ fn format_colour_percent(colour: bool, stat_spaces: usize, suc: u32, total: u32)
         return cell_string;
     }
     if percent < 10 {
-        return colour_ok(&cell_string, colour);
+        colour_ok(&cell_string, colour)
     } else if percent <= 50 {
-        return colour_amber(&cell_string, colour);
+        colour_amber(&cell_string, colour)
     } else { // greater than 50% loss (etc.)
-        return colour_error(&cell_string, colour);
+        colour_error(&cell_string, colour)
     }
 }
 

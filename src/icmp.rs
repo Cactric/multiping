@@ -1,7 +1,5 @@
-/// Structs for ICMPv4
 // Source: https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol
 // TODO: ICMPv6
-
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum ICMPMessage {
@@ -11,6 +9,7 @@ pub enum ICMPMessage {
 
 #[allow(dead_code)]
 #[derive(Debug)]
+/// Structs for ICMPv4
 pub struct ICMPv4Message {
     /// Type of control message, including the code
     pub icmpv4_type: ICMPv4Type, // on wire: two bytes (type: u8 and code: u8)
@@ -143,7 +142,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 let code: DestinationUnreachableCode = parse_unreachable_code(msgbytes[1])?;
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::DestinationUnreachable {
-                        code: code,
+                        code,
                         length: msgbytes[5],
                         next_hop_mtu: be_u16(msgbytes, 6)
                     }, icmpv4_checksum: be_u16(msgbytes, 2),
@@ -159,7 +158,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 let code: RedirectMsgCode = parse_redirect_code(msgbytes[1])?;
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::RedirectMessage {
-                        code: code,
+                        code,
                         address: be_u32(msgbytes, 4)
                     },
                     icmpv4_checksum: be_u16(msgbytes, 2),
@@ -197,7 +196,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 };
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::TimeExceeded {
-                        code: code,
+                        code,
                     },
                     icmpv4_checksum: be_u16(msgbytes, 2),
                     icmpv4_data: msgbytes[8..].to_vec()
@@ -212,7 +211,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 };
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::BadIPHeader {
-                        code: code,
+                        code,
                     },
                     icmpv4_checksum: be_u16(msgbytes, 2),
                     icmpv4_data: msgbytes[8..].to_vec()
@@ -311,7 +310,7 @@ pub fn populate_checksum(header: &mut [u8]) {
     for b in &mut *header {
         total += *b as u32;
     }
-    while !(total < 0xffff) {
+    while total >= 0xffff {
         total += total >> 16
     }
     let final_checksum: [u8; 2] = (!total as u16).to_be_bytes();
