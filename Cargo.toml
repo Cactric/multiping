@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.5.40", features = ["derive"] }
 console = "0.16.0"
-socket2 = "0.5.10"
+socket2 = "0.6.0"
 
 [lints.rust]
 unsafe_code = "deny"
