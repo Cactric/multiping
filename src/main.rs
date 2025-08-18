@@ -101,12 +101,13 @@ fn main() {
 
 fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, args: Arguments) -> Result<(), Error> {
     let term = Term::buffered_stdout();
+    let colour = console::colors_enabled() || args.colour.unwrap_or(false);
     term.hide_cursor()?;
     
     // Listen for updates
     for update in rx {
         update_host_info(&update, &mut hinfos);
-        update_display(&term, &hinfos, args.colour.unwrap_or(true))?;
+        update_display(&term, &hinfos, colour)?;
     }
     
     term.show_cursor()?;
