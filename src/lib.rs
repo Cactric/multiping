@@ -133,19 +133,14 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
         let used_bytes = socket.read(&mut rec_buf)?;
         let maybe_message: Result<ICMPv4Message, IntoICMPv4MessageError> = rec_buf[..used_bytes].try_into();
         if let Ok(message) = maybe_message {
-            // println!("Message received: {:?}", message);
-            // try to parse the timestamp in the received packet
             let ts_seconds = u64::from_be_bytes(message.icmpv4_data[0..8].try_into().unwrap());
             let ts_sub_micros = u64::from_be_bytes(message.icmpv4_data[8..16].try_into().unwrap());
-            // println!("ts_seconds: {}, ts_sub_micros: {}", ts_seconds, ts_sub_micros);
             let ts_micros = (ts_seconds as u128 * 1000000) + ts_sub_micros as u128;
             
             let cur_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
             let cur_micros = cur_time.as_nanos() / 1000;
             
-            // println!("ts_micros: {}, cur_micros: {}", ts_micros, cur_micros);
             let diff_micros = cur_micros - ts_micros;
-            // println!("Latency: {}s", diff_micros as f64 / 1000000.0);
             
             return Ok((SocketAddr::V4(addr4), diff_micros as u64));
             
