@@ -45,6 +45,7 @@ fn main() {
             hinfos.push(hinfo);
         } else {
             eprintln!("Failed to parse {}", h);
+            exit(1);
         }
     }
     
