@@ -1,5 +1,5 @@
 use console::Term;
-use std::{io::Error, process::exit};
+use std::{cmp::max, io::Error, process::exit};
 use clap::Parser;
 use std::time::Duration;
 use std::sync::mpsc;
@@ -37,12 +37,14 @@ fn main() {
     let (send_tx, rx) = mpsc::channel::<StatusUpdate>();
     let recv_tx = send_tx.clone();
     let mut hinfos: Vec<HostInfo> = Vec::new();
+    let mut max_host_width = 0;
     
     // Parse the provided hosts into a vector of HostInfos
     for h in &args.hosts {
         let maybe_hinfo = HostInfo::new(h);
         if let Ok(hinfo) = maybe_hinfo {
             hinfos.push(hinfo);
+            max_host_width = max(max_host_width, console::measure_text_width(h));
         } else {
             eprintln!("Failed to parse {}", h);
             exit(1);
@@ -95,12 +97,12 @@ fn main() {
         }
     });
     
-    if let Err(e) = display_loop(rx, hinfos, args) {
+    if let Err(e) = display_loop(rx, hinfos, max_host_width, args) {
         eprintln!("Error in display loop {}", e);
     }
 }
 
-fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, args: Arguments) -> Result<(), Error> {
+fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, max_host_width: usize, args: Arguments) -> Result<(), Error> {
     let term = Term::buffered_stdout();
     let colour = console::colors_enabled() || args.colour.unwrap_or(false);
     term.hide_cursor()?;
@@ -108,17 +110,17 @@ fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, args: Arg
     // Listen for updates
     for update in rx {
         update_host_info(&update, &mut hinfos);
-        update_display(&term, &hinfos, colour)?;
+        update_display(&term, &hinfos, max_host_width, colour)?;
     }
     
     term.show_cursor()?;
     Ok(())
 }
 
-fn update_display(term: &Term, hinfos: &Vec<HostInfo>, colour: bool) -> Result<(), Error> {
+fn update_display(term: &Term, hinfos: &Vec<HostInfo>, max_host_width: usize, colour: bool) -> Result<(), Error> {
     term.clear_screen()?;
     
-    let host_spaces = 19;
+    let host_spaces = max(19, max_host_width);
     let stat_spaces = 8;
     
     let header_line = format_header(host_spaces, stat_spaces);
