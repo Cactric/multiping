@@ -6,7 +6,7 @@ use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::thread;
 
-use multiping::{mksocket, receive_ping, send_ping, update_host_info, format_host_info, format_header, HostInfo, StatusUpdate};
+use multiping::*;
 
 pub mod icmp;
 
@@ -120,8 +120,8 @@ fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, max_host_
 fn update_display(term: &Term, hinfos: &Vec<HostInfo>, max_host_width: usize, colour: bool) -> Result<(), Error> {
     term.clear_screen()?;
     
-    let host_spaces = max(19, max_host_width);
-    let stat_spaces = 8;
+    let host_spaces = max(12, max_host_width);
+    let stat_spaces = 7;
     
     let header_line = format_header(host_spaces, stat_spaces);
     term.write_line(header_line.as_str())?;
