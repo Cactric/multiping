@@ -114,17 +114,16 @@ pub enum IntoICMPError {
 impl TryFrom<&[u8]> for ICMPv4Message {
     type Error = IntoICMPError;
 
-    // TODO: reduce amount of repetition here
     fn try_from(msgbytes: &[u8]) -> Result<Self, Self::Error> {
+        let icmpv4_checksum = be_u16(msgbytes, 2);
+        let icmpv4_data = msgbytes[8..].to_vec();
         match msgbytes[0] { // Match on the type
             0 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::EchoReply {
                     identifier: be_u16(msgbytes, 4),
                     sequence_num: be_u16(msgbytes, 6)
                 },
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             3 => {
                 let code: DestinationUnreachableCode = msgbytes[1].try_into()?;
                 Ok(ICMPv4Message {
@@ -132,15 +131,11 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                         code,
                         length: msgbytes[5],
                         next_hop_mtu: be_u16(msgbytes, 6)
-                    }, icmpv4_checksum: be_u16(msgbytes, 2),
-                    icmpv4_data: msgbytes[8..].to_vec()
-                })
+                    }, icmpv4_checksum, icmpv4_data})
             },
             4 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::SourceQuench {},
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             5 => {
                 let code: RedirectMsgCode = msgbytes[1].try_into()?;
                 Ok(ICMPv4Message {
@@ -148,33 +143,23 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                         code,
                         address: be_u32(msgbytes, 4)
                     },
-                    icmpv4_checksum: be_u16(msgbytes, 2),
-                    icmpv4_data: msgbytes[8..].to_vec()
-                })
+                    icmpv4_checksum, icmpv4_data})
             },
             6 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::SourceQuench {},
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             8 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::EchoRequest {
                     identifier: be_u16(msgbytes, 4),
                     sequence_num: be_u16(msgbytes, 6)
                 },
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             9 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::RouterAdvertisement {},
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             10 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::RouterSolicitation {},
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             11 => {
                 let code: TimeExceededCode = match msgbytes[1] {
                     0 => TimeExceededCode::ExpiredInTransit,
@@ -185,9 +170,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     icmpv4_type: ICMPv4Type::TimeExceeded {
                         code,
                     },
-                    icmpv4_checksum: be_u16(msgbytes, 2),
-                    icmpv4_data: msgbytes[8..].to_vec()
-                })
+                    icmpv4_checksum, icmpv4_data})
             },
             12 => {
                 let code: BadIPHeaderCode = match msgbytes[1] {
@@ -200,9 +183,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     icmpv4_type: ICMPv4Type::BadIPHeader {
                         code,
                     },
-                    icmpv4_checksum: be_u16(msgbytes, 2),
-                    icmpv4_data: msgbytes[8..].to_vec()
-                })
+                    icmpv4_checksum, icmpv4_data})
             },
             13 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::Timestamp {
@@ -212,9 +193,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     ts_receive: be_u32(msgbytes, 12),
                     ts_transmit:  be_u32(msgbytes, 16)
                 },
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             14 => Ok(ICMPv4Message {
                 icmpv4_type: ICMPv4Type::TimestampReply {
                     identifier: be_u16(msgbytes, 4),
@@ -223,9 +202,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     ts_receive: be_u32(msgbytes, 12),
                     ts_transmit:  be_u32(msgbytes, 16)
                 },
-                icmpv4_checksum: be_u16(msgbytes, 2),
-                icmpv4_data: msgbytes[8..].to_vec()
-            }),
+                icmpv4_checksum, icmpv4_data}),
             _ => Err(IntoICMPError::UnknownType)
         }
     }
@@ -370,8 +347,9 @@ pub enum ParamProblemCode {
 impl TryFrom<&[u8]> for ICMPv6Message {
     type Error = IntoICMPError;
 
-    // TODO: reduce amount of repetition here
     fn try_from(msgbytes: &[u8]) -> Result<Self, Self::Error> {
+        let checksum = be_u16(msgbytes, 2);
+        let body = msgbytes[8..].to_vec();
         match msgbytes[0] {
             1 => { // DestinationUnreachable
                 let code = msgbytes[1].try_into()?;
@@ -379,34 +357,26 @@ impl TryFrom<&[u8]> for ICMPv6Message {
                     icmpv6_type: ICMPv6Type::DestinationUnreachable {
                         code
                     },
-                    checksum: be_u16(msgbytes, 2),
-                    body: msgbytes[8..].to_vec()
-                })
+                    checksum, body})
             },
             2 => { // PacketTooBig
                 Ok(ICMPv6Message {
                     icmpv6_type: ICMPv6Type::PacketTooBig {
                         mtu: be_u32(msgbytes, 4)
                     },
-                    checksum: be_u16(msgbytes, 2),
-                    body: msgbytes[8..].to_vec()
-                })
+                    checksum, body})
             }
             3 => { // TimeExceeded
                 let code = msgbytes[1].try_into()?;
                 Ok(ICMPv6Message {
                     icmpv6_type: ICMPv6Type::TimeExceeded { code },
-                    checksum: be_u16(msgbytes, 2),
-                    body: msgbytes[8..].to_vec()
-                })
+                    checksum, body})
             },
             4 => { // ParameterProblem
                 let code = msgbytes[1].try_into()?;
                 Ok(ICMPv6Message {
                     icmpv6_type: ICMPv6Type::ParameterProblem { code, ptr: be_u32(msgbytes, 4)},
-                    checksum: be_u16(msgbytes, 2),
-                    body: msgbytes[8..].to_vec()
-                })
+                    checksum, body})
             },
             128 => { // Echo Request
                 Ok(ICMPv6Message {
@@ -414,9 +384,7 @@ impl TryFrom<&[u8]> for ICMPv6Message {
                         identifier: be_u16(msgbytes, 4),
                         sequence_num: be_u16(msgbytes, 6)
                     },
-                    checksum: be_u16(msgbytes, 2),
-                    body: msgbytes[8..].to_vec()
-                })
+                    checksum, body})
             }
             129 => { // Echo Reply
                 Ok(ICMPv6Message {
@@ -424,9 +392,7 @@ impl TryFrom<&[u8]> for ICMPv6Message {
                         identifier: be_u16(msgbytes, 4),
                         sequence_num: be_u16(msgbytes, 6)
                     },
-                    checksum: be_u16(msgbytes, 2),
-                    body: msgbytes[8..].to_vec()
-                })
+                    checksum, body})
             }
             _ => Err(IntoICMPError::UnknownType),
         }
