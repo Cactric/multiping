@@ -3,7 +3,6 @@ use std::io::{Error, Read, ErrorKind};
 use std::time::SystemTime;
 use std::net::ToSocketAddrs;
 use std::net::SocketAddr::V6;
-use console::style;
 use socket2::{Domain, Protocol, Socket, Type};
 
 use crate::icmp::*;
@@ -13,16 +12,16 @@ pub mod icmp;
 #[derive(Clone, Debug)]
 pub struct HostInfo {
     // Times in this struct are in microseconds? (unless I change them to a Duration)
-    host_str: String, // Original user input, used for display
+    pub host_str: String, // Original user input, used for display
     pub host: SocketAddr,
-    pings_sent: u32,
-    latest_time: Option<u64>,
-    sum_times: u64,
-    sum_squared_times_ms: f64, // sum of the times squared, used for calculating jitter (std. dev of times)
-    min_time: Option<u64>,
-    max_time: Option<u64>,
-    successful: u32,
-    last_error: Option<ErrorKind>,
+    pub pings_sent: u32,
+    pub latest_time: Option<u64>,
+    pub sum_times: u64,
+    pub sum_squared_times_ms: f64, // sum of the times squared, used for calculating jitter (std. dev of times)
+    pub min_time: Option<u64>,
+    pub max_time: Option<u64>,
+    pub successful: u32,
+    pub last_error: Option<ErrorKind>,
 }
 
 impl HostInfo {
@@ -162,127 +161,4 @@ pub fn mksocket() -> Result<Socket, Error> {
     let wildcard: SocketAddr = "0.0.0.0:0".parse().unwrap();
     let socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV4))?;
     Ok(socket)
-}
-
-const SEPARATOR: &str = " | ";
-
-pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
-    let mut s = String::new();
-    
-    s.push_str(format!("{:<host_spaces$}", "Host").as_str());
-    s.push_str(SEPARATOR);
-    for heading in ["Time", "Minimum", "Average", "Maximum", "Jitter", "Loss"] {
-        s.push_str(format!("{:<stat_spaces$}", heading).as_str());
-        s.push_str(SEPARATOR);
-    }
-    
-    s
-}
-
-pub fn format_host_info(host: &HostInfo, colour: bool, host_spaces: usize, stat_spaces: usize) -> String {
-    let mut s = String::new();
-    eprintln!("{:?}", host);
-    
-    s.push_str(format!("{:<host_spaces$}", host.host_str).as_str());
-    s.push_str(SEPARATOR);
-    
-    if let Some(error) = host.last_error {
-        for _x in 0..=stat_spaces - 6 {
-            s.push(' ');
-        }
-        s.push_str(colour_error("Error", colour).as_str());
-        s.push_str(": ");
-        s.push_str(error.to_string().as_str());
-        return s;
-    }
-    
-    for stat in [to_sec(host.latest_time), to_sec(host.min_time), not_nan(host.average()), to_sec(host.max_time), not_nan(host.jitter())] {
-        s.push_str(format_time_cell(colour, stat_spaces, stat).as_str());
-        s.push_str(SEPARATOR);
-    }
-    s.push_str(format_colour_percent(colour, stat_spaces, host.successful, host.pings_sent).as_str());
-    s.push_str(SEPARATOR);
-    
-    s
-}
-
-fn to_sec(microseconds: Option<u64>) -> Option<u64> {
-    Some(microseconds? / 1000)
-}
-
-fn not_nan(num: f32) -> Option<u64> {
-    if num.is_nan() {
-        None
-    } else {
-        Some(num as u64)
-    }
-}
-
-fn colour_error(msg: &str, colour: bool) -> String {
-    if colour {
-        style(msg).red().to_string()
-    } else {
-        msg.to_string()
-    }
-}
-
-fn colour_ok(msg: &str, colour: bool) -> String {
-    if colour {
-        style(msg).green().to_string()
-    } else {
-        msg.to_string()
-    }
-}
-
-fn colour_amber(msg: &str, colour: bool) -> String {
-    if colour {
-        style(msg).yellow().to_string()
-    } else {
-        msg.to_string()
-    }
-}
-
-fn format_colour_percent(colour: bool, stat_spaces: usize, suc: u32, total: u32) -> String {
-    let cell_string = format_percent_cell(stat_spaces, suc, total);
-    if total == 0 || suc > total {
-        return colour_error(&cell_string, colour);
-    }
-    
-    let percent = (total - suc) * 100 / total;
-    if !colour {
-        return cell_string;
-    }
-    if percent < 10 {
-        colour_ok(&cell_string, colour)
-    } else if percent <= 50 {
-        colour_amber(&cell_string, colour)
-    } else { // greater than 50% loss (etc.)
-        colour_error(&cell_string, colour)
-    }
-}
-
-fn format_time_cell(colour: bool, stat_spaces: usize, stat: Option<u64>) -> String {
-    let united_spaces = stat_spaces -  3;
-    if let Some(s) = stat {
-        let cell = format!("{:>united_spaces$} ms", s);
-        if colour {
-            return style(cell).blue().to_string();
-        }
-        cell
-    } else {
-        let cell = format!("{:>stat_spaces$}", "- ");
-        if colour {
-            return style(cell).red().to_string();
-        }
-        cell
-    }
-}
-
-fn format_percent_cell(stat_spaces: usize, suc: u32, total: u32) -> String {
-    let united_spaces = stat_spaces - 2;
-    if total == 0 || suc > total {
-        format!("{:>stat_spaces$}", "- ")
-    } else {
-        format!("{:>united_spaces$} %", ((total - suc) * 100) / total)
-    }
 }
