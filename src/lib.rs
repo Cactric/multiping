@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::io::{Error, Read, ErrorKind};
 use std::time::SystemTime;
 use std::net::ToSocketAddrs;
-use std::net::SocketAddr::V6;
 use socket2::{Domain, Protocol, Socket, Type};
 
 use crate::icmp::*;
@@ -31,11 +30,8 @@ impl HostInfo {
         let mut chosen_host: Option<SocketAddr> = None;
         
         for h in possible_hosts {
-            // IPv6 isn't supported yet...
-            if let V6(_) = h {
-                continue;
-            }
             // I guess we found one
+            // TODO: choosing logic? Or at least have options to restrict to v4/v6
             chosen_host = Some(h);
         }
         if chosen_host.is_none() {
@@ -147,6 +143,30 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
             let diff_micros = cur_micros - ts_micros;
             
             return Ok((SocketAddr::V4(addr4), diff_micros as u64));
+            
+        } else if let Err(e) = maybe_message {
+            print!("Error parsing response: ");
+            match e {
+                IntoICMPError::UnknownType => println!("unknown type"),
+                IntoICMPError::UnknownCode => println!("unknown code"),
+                IntoICMPError::NotLongEnough => println!("message not long enough"),
+                IntoICMPError::OtherError => println!("other error"),
+            }
+        }
+    } else if let Some(addr6) = addr.as_socket_ipv6() {
+        let used_bytes = socket.read(&mut rec_buf)?;
+        let maybe_message: Result<ICMPv6Message, IntoICMPError> = rec_buf[..used_bytes].try_into();
+        if let Ok(message) = maybe_message {
+            let ts_seconds = u64::from_be_bytes(message.body[0..8].try_into().unwrap());
+            let ts_sub_micros = u64::from_be_bytes(message.body[8..16].try_into().unwrap());
+            let ts_micros = (ts_seconds as u128 * 1000000) + ts_sub_micros as u128;
+            
+            let cur_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+            let cur_micros = cur_time.as_nanos() / 1000;
+            
+            let diff_micros = cur_micros - ts_micros;
+            
+            return Ok((SocketAddr::V6(addr6), diff_micros as u64));
             
         } else if let Err(e) = maybe_message {
             print!("Error parsing response: ");

@@ -35,7 +35,8 @@ fn main() {
     }
     
     let (send_tx, rx) = mpsc::channel::<StatusUpdate>();
-    let recv_tx = send_tx.clone();
+    let recv_tx4 = send_tx.clone();
+    let recv_tx6 = send_tx.clone();
     let mut hinfos: Vec<HostInfo> = Vec::new();
     let mut max_host_width = 0;
     
@@ -51,36 +52,47 @@ fn main() {
         }
     }
     
-    let recv_enum_host_infos = hinfos.clone().into_iter().enumerate();
+    let recv_enum_host_infos4 = hinfos.clone().into_iter().enumerate();
+    let recv_enum_host_infos6 = hinfos.clone().into_iter().enumerate();
     let send_enum_host_infos = hinfos.clone().into_iter().enumerate();
-    let socket = mkv4socket().unwrap();
-    let socket2 = socket.try_clone().unwrap();
+    let txsocket4 = mkv4socket().unwrap();
+    let rxsocket4 = txsocket4.try_clone().unwrap();
+    let txsocket6 = mkv6socket().unwrap();
+    let rxsocket6 = txsocket6.try_clone().unwrap();
     
     // Spawn threads
+    // Sending thread (both IPv4 and IPv6)
     thread::spawn(move || {
         loop {
             for (i, h) in send_enum_host_infos.clone() {
-                //println!("Host: {:?}", h.1.host);
-                if let Err(e) = send_ping(&h, &socket) {
-                    // Error
-                    send_tx.send(StatusUpdate::Error(i, e.kind())).unwrap();
+                let send_result;
+                if h.host.is_ipv4() {
+                    send_result = send_ping(&h, &txsocket4);
+                } else if h.host.is_ipv6() {
+                    send_result = send_ping(&h, &txsocket6);
                 } else {
-                    send_tx.send(StatusUpdate::Sent(i)).unwrap();
+                    eprintln!("{} is neither IPv4 nor IPv6", h.host);
+                    continue;
+                }
+                match send_result {
+                    Err(e) => send_tx.send(StatusUpdate::Error(i, e.kind())).unwrap(),
+                    Ok(_) => send_tx.send(StatusUpdate::Sent(i)).unwrap()
                 }
             }
             thread::sleep(Duration::from_secs_f32(args.interval));
         }
     });
+
+    // IPv4 listening thread
     thread::spawn(move || {
         loop {
-            match receive_ping(&socket2) {
+            match receive_ping(&rxsocket4) {
                 Ok((addr, latency)) => {
-                    println!("Latency from {:?}: {}", &addr, &latency);
                     // Figure out which host the address was from
                     let mut found = false;
-                    for (i, h) in recv_enum_host_infos.clone() {
+                    for (i, h) in recv_enum_host_infos4.clone() {
                         if h.host == addr {
-                            recv_tx.send(StatusUpdate::Received(i, latency)).unwrap();
+                            recv_tx4.send(StatusUpdate::Received(i, latency)).unwrap();
                             found = true;
                             break;
                         }
@@ -90,7 +102,31 @@ fn main() {
                     }
                 },
                 Err(e) => {
-                    //recv_tx.send(StatusUpdate::Error(i, e.kind())).unwrap();
+                    eprintln!("Error listening to socket: {}", e);
+                }
+            }
+        }
+    });
+    
+    // IPv6 listening thread
+    thread::spawn(move || {
+        loop {
+            match receive_ping(&rxsocket6) {
+                Ok((addr, latency)) => {
+                    // Figure out which host the address was from
+                    let mut found = false;
+                    for (i, h) in recv_enum_host_infos6.clone() {
+                        if h.host == addr {
+                            recv_tx6.send(StatusUpdate::Received(i, latency)).unwrap();
+                            found = true;
+                            break;
+                        }
+                    }
+                    if !found {
+                        eprintln!("Host not found: addr = {}", addr)
+                    }
+                },
+                Err(e) => {
                     eprintln!("Error listening to socket: {}", e);
                 }
             }
