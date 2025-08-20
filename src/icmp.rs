@@ -320,5 +320,163 @@ pub fn populate_checksum(header: &mut [u8]) {
 
 #[derive(Debug)]
 pub struct ICMPv6Message {
-    // TODO
+    pub icmpv6_type: ICMPv6Type, // encompasses the code field too
+    pub checksum: u16,
+    pub body: Vec<u8>
+}
+
+#[derive(Debug)]
+pub enum ICMPv6Type {
+    // Error messages
+    DestinationUnreachable {
+        code: DestinationUnreachableV6Code
+    }, // #1
+    PacketTooBig {
+        mtu: u32,
+    }, // #2
+    TimeExceeded {
+        code: TimeExceededCode // uses the same code enum as v4
+    }, // #3
+    ParameterProblem {
+        code: ParamProblemCode,
+        ptr: u32,
+    }, // #4
+    // Informational messages
+    EchoRequest {
+        identifier: u16,
+        sequence_num: u16,
+    }, // #128
+    EchoReply {
+        identifier: u16,
+        sequence_num: u16,
+    }, // #129
+    // More exist, but `multiping` doesn't need them
+}
+
+#[derive(Debug)]
+pub enum DestinationUnreachableV6Code {
+    NoRouteToDestination, // #0
+    CommAdministrativelyProhibited, // #1
+    BeyondScopeOfSourceAddress, // #2
+    AddressUnreachable, // #3
+    PortUnreachable, // #4
+    SourceAddressFailedIngressEgressPolicy, // #5
+    RejectRouteToDestination, // #6
+    ErrorInSourceRoutingHeader, // #7
+}
+
+#[derive(Debug)]
+pub enum ParamProblemCode {
+    ErroneousHeaderField,
+    UnrecognisedNextHeaderType,
+    UnrecognisedIPv6Option,
+}
+
+impl TryFrom<&[u8]> for ICMPv6Message {
+    type Error = IntoICMPv4MessageError;
+
+    // TODO: reduce amount of repetition here
+    fn try_from(msgbytes: &[u8]) -> Result<Self, Self::Error> {
+        match msgbytes[0] {
+            1 => { // DestinationUnreachable
+                let code = msgbytes[1].try_into()?;
+                Ok(ICMPv6Message {
+                    icmpv6_type: ICMPv6Type::DestinationUnreachable {
+                        code
+                    },
+                    checksum: be_u16(msgbytes, 2),
+                    body: msgbytes[8..].to_vec()
+                })
+            },
+            2 => { // PacketTooBig
+                Ok(ICMPv6Message {
+                    icmpv6_type: ICMPv6Type::PacketTooBig {
+                        mtu: be_u32(msgbytes, 4)
+                    },
+                    checksum: be_u16(msgbytes, 2),
+                    body: msgbytes[8..].to_vec()
+                })
+            }
+            3 => { // TimeExceeded
+                let code = msgbytes[1].try_into()?;
+                Ok(ICMPv6Message {
+                    icmpv6_type: ICMPv6Type::TimeExceeded { code },
+                    checksum: be_u16(msgbytes, 2),
+                    body: msgbytes[8..].to_vec()
+                })
+            },
+            4 => { // ParameterProblem
+                let code = msgbytes[1].try_into()?;
+                Ok(ICMPv6Message {
+                    icmpv6_type: ICMPv6Type::ParameterProblem { code, ptr: be_u32(msgbytes, 4)},
+                    checksum: be_u16(msgbytes, 2),
+                    body: msgbytes[8..].to_vec()
+                })
+            },
+            128 => { // Echo Request
+                Ok(ICMPv6Message {
+                    icmpv6_type: ICMPv6Type::EchoRequest { 
+                        identifier: be_u16(msgbytes, 4),
+                        sequence_num: be_u16(msgbytes, 6)
+                    },
+                    checksum: be_u16(msgbytes, 2),
+                    body: msgbytes[8..].to_vec()
+                })
+            }
+            129 => { // Echo Reply
+                Ok(ICMPv6Message {
+                    icmpv6_type: ICMPv6Type::EchoReply { 
+                        identifier: be_u16(msgbytes, 4),
+                        sequence_num: be_u16(msgbytes, 6)
+                    },
+                    checksum: be_u16(msgbytes, 2),
+                    body: msgbytes[8..].to_vec()
+                })
+            }
+            _ => Err(IntoICMPv4MessageError::UnknownType),
+        }
+    }
+}
+
+impl TryFrom<u8> for DestinationUnreachableV6Code {
+    type Error = IntoICMPv4MessageError;
+    
+    fn try_from(code: u8) -> Result<Self, Self::Error> {
+        match code {
+            0 => Ok(DestinationUnreachableV6Code::NoRouteToDestination),
+            1 => Ok(DestinationUnreachableV6Code::CommAdministrativelyProhibited),
+            2 => Ok(DestinationUnreachableV6Code::BeyondScopeOfSourceAddress),
+            3 => Ok(DestinationUnreachableV6Code::AddressUnreachable),
+            4 => Ok(DestinationUnreachableV6Code::PortUnreachable),
+            5 => Ok(DestinationUnreachableV6Code::SourceAddressFailedIngressEgressPolicy),
+            6 => Ok(DestinationUnreachableV6Code::RejectRouteToDestination),
+            7 => Ok(DestinationUnreachableV6Code::ErrorInSourceRoutingHeader),
+            _ => Err(IntoICMPv4MessageError::UnknownCode)
+        }
+    }
+}
+
+impl TryFrom<u8> for TimeExceededCode {
+    type Error = IntoICMPv4MessageError;
+    
+    fn try_from(code: u8) -> Result<Self, Self::Error> {
+        match code {
+            0 => Ok(TimeExceededCode::ExpiredInTransit),
+            1 => Ok(TimeExceededCode::FragmentReassemblyTimeExceeded),
+            _ => Err(IntoICMPv4MessageError::UnknownCode)
+        }
+    }
+}
+
+impl TryFrom<u8> for ParamProblemCode {
+    type Error = IntoICMPv4MessageError;
+    
+    fn try_from(code: u8) -> Result<Self, Self::Error> {
+        match code {
+            0 => Ok(ParamProblemCode::ErroneousHeaderField),
+            1 => Ok(ParamProblemCode::UnrecognisedNextHeaderType),
+            2 => Ok(ParamProblemCode::UnrecognisedIPv6Option),
+            _ => Err(IntoICMPv4MessageError::UnknownCode)
+        }
+    }
 }
