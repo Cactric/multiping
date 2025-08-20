@@ -71,7 +71,7 @@ fn main() {
                 } else if h.host.is_ipv6() {
                     send_result = send_ping(&h, &txsocket6);
                 } else {
-                    eprintln!("{} is neither IPv4 nor IPv6", h.host);
+                    eprintln!("{} is neither IPv4 nor IPv6", h.host_str);
                     continue;
                 }
                 match send_result {
