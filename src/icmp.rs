@@ -126,7 +126,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             3 => {
-                let code: DestinationUnreachableCode = parse_unreachable_code(msgbytes[1])?;
+                let code: DestinationUnreachableCode = msgbytes[1].try_into()?;
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::DestinationUnreachable {
                         code,
@@ -142,7 +142,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
             5 => {
-                let code: RedirectMsgCode = parse_redirect_code(msgbytes[1])?;
+                let code: RedirectMsgCode = msgbytes[1].try_into()?;
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::RedirectMessage {
                         code,
@@ -231,35 +231,43 @@ impl TryFrom<&[u8]> for ICMPv4Message {
     }
 }
 
-pub fn parse_unreachable_code(value: u8) -> Result<DestinationUnreachableCode, IntoICMPError> {
-    match value {
-        0 => Ok(DestinationUnreachableCode::NetworkUnreachable),
-        1 => Ok(DestinationUnreachableCode::HostUnreachable),
-        2 => Ok(DestinationUnreachableCode::ProtocolUnreachable),
-        3 => Ok(DestinationUnreachableCode::PortUnreachable),
-        4 => Ok(DestinationUnreachableCode::FragmentationRequired),
-        5 => Ok(DestinationUnreachableCode::SourceRouteFailed),
-        6 => Ok(DestinationUnreachableCode::NetworkUnknown),
-        7 => Ok(DestinationUnreachableCode::DestHostUnknown),
-        8 => Ok(DestinationUnreachableCode::SourceHostIsolated),
-        9 => Ok(DestinationUnreachableCode::NetAdministrativelyProhibited),
-        10 => Ok(DestinationUnreachableCode::HostAdministrativelyProhibited),
-        11 => Ok(DestinationUnreachableCode::NetworkUnreachableForToS),
-        12 => Ok(DestinationUnreachableCode::HostUnreachableForToS),
-        13 => Ok(DestinationUnreachableCode::CommAdministrativelyProhibited),
-        14 => Ok(DestinationUnreachableCode::HostPrecedenceViolation),
-        15 => Ok(DestinationUnreachableCode::PrecedenceCuttoffInEffect),
-        _ => Err(IntoICMPError::UnknownCode)
+impl TryFrom<u8> for DestinationUnreachableCode {
+    type Error = IntoICMPError;
+    
+    fn try_from(code: u8) -> Result<Self, Self::Error> {
+        match code {
+            0 => Ok(DestinationUnreachableCode::NetworkUnreachable),
+            1 => Ok(DestinationUnreachableCode::HostUnreachable),
+            2 => Ok(DestinationUnreachableCode::ProtocolUnreachable),
+            3 => Ok(DestinationUnreachableCode::PortUnreachable),
+            4 => Ok(DestinationUnreachableCode::FragmentationRequired),
+            5 => Ok(DestinationUnreachableCode::SourceRouteFailed),
+            6 => Ok(DestinationUnreachableCode::NetworkUnknown),
+            7 => Ok(DestinationUnreachableCode::DestHostUnknown),
+            8 => Ok(DestinationUnreachableCode::SourceHostIsolated),
+            9 => Ok(DestinationUnreachableCode::NetAdministrativelyProhibited),
+            10 => Ok(DestinationUnreachableCode::HostAdministrativelyProhibited),
+            11 => Ok(DestinationUnreachableCode::NetworkUnreachableForToS),
+            12 => Ok(DestinationUnreachableCode::HostUnreachableForToS),
+            13 => Ok(DestinationUnreachableCode::CommAdministrativelyProhibited),
+            14 => Ok(DestinationUnreachableCode::HostPrecedenceViolation),
+            15 => Ok(DestinationUnreachableCode::PrecedenceCuttoffInEffect),
+            _ => Err(IntoICMPError::UnknownCode)
+        }        
     }
 }
 
-pub fn parse_redirect_code(value: u8) -> Result<RedirectMsgCode, IntoICMPError> {
-    match value {
-        0 => Ok(RedirectMsgCode::Network),
-        1 => Ok(RedirectMsgCode::Host),
-        2 => Ok(RedirectMsgCode::ToSAndNetwork),
-        3 => Ok(RedirectMsgCode::ToSAndHost),
-        _ => Err(IntoICMPError::UnknownCode)
+impl TryFrom<u8> for RedirectMsgCode {
+    type Error = IntoICMPError;
+    
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(RedirectMsgCode::Network),
+            1 => Ok(RedirectMsgCode::Host),
+            2 => Ok(RedirectMsgCode::ToSAndNetwork),
+            3 => Ok(RedirectMsgCode::ToSAndHost),
+            _ => Err(IntoICMPError::UnknownCode)
+        }
     }
 }
 
