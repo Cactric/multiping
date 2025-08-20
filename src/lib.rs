@@ -135,7 +135,7 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
     // Try to parse the received bytes
     if let Some(addr4) = addr.as_socket_ipv4() {
         let used_bytes = socket.read(&mut rec_buf)?;
-        let maybe_message: Result<ICMPv4Message, IntoICMPv4MessageError> = rec_buf[..used_bytes].try_into();
+        let maybe_message: Result<ICMPv4Message, IntoICMPError> = rec_buf[..used_bytes].try_into();
         if let Ok(message) = maybe_message {
             let ts_seconds = u64::from_be_bytes(message.icmpv4_data[0..8].try_into().unwrap());
             let ts_sub_micros = u64::from_be_bytes(message.icmpv4_data[8..16].try_into().unwrap());
@@ -151,10 +151,10 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
         } else if let Err(e) = maybe_message {
             print!("Error parsing response: ");
             match e {
-                IntoICMPv4MessageError::UnknownType => println!("unknown type"),
-                IntoICMPv4MessageError::UnknownCode => println!("unknown code"),
-                IntoICMPv4MessageError::NotLongEnough => println!("message not long enough"),
-                IntoICMPv4MessageError::OtherError => println!("other error"),
+                IntoICMPError::UnknownType => println!("unknown type"),
+                IntoICMPError::UnknownCode => println!("unknown code"),
+                IntoICMPError::NotLongEnough => println!("message not long enough"),
+                IntoICMPError::OtherError => println!("other error"),
             }
         }
     }

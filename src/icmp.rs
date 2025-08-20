@@ -116,7 +116,7 @@ pub enum BadIPHeaderCode {
 }
 
 #[allow(dead_code)]
-pub enum IntoICMPv4MessageError {
+pub enum IntoICMPError {
     UnknownType,
     UnknownCode,
     NotLongEnough,
@@ -125,7 +125,7 @@ pub enum IntoICMPv4MessageError {
 
 #[allow(dead_code)]
 impl TryFrom<&[u8]> for ICMPv4Message {
-    type Error = IntoICMPv4MessageError;
+    type Error = IntoICMPError;
 
     // TODO: reduce amount of repetition here
     fn try_from(msgbytes: &[u8]) -> Result<Self, Self::Error> {
@@ -192,7 +192,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 let code: TimeExceededCode = match msgbytes[1] {
                     0 => TimeExceededCode::ExpiredInTransit,
                     1 => TimeExceededCode::FragmentReassemblyTimeExceeded,
-                    _ => return Err(IntoICMPv4MessageError::UnknownCode),
+                    _ => return Err(IntoICMPError::UnknownCode),
                 };
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::TimeExceeded {
@@ -207,7 +207,7 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                     0 => BadIPHeaderCode::PointerIndicatesError,
                     1 => BadIPHeaderCode::MissingRequiredOption,
                     2 => BadIPHeaderCode::BadLength,
-                    _ => return Err(IntoICMPv4MessageError::UnknownCode),
+                    _ => return Err(IntoICMPError::UnknownCode),
                 };
                 Ok(ICMPv4Message {
                     icmpv4_type: ICMPv4Type::BadIPHeader {
@@ -239,12 +239,12 @@ impl TryFrom<&[u8]> for ICMPv4Message {
                 icmpv4_checksum: be_u16(msgbytes, 2),
                 icmpv4_data: msgbytes[8..].to_vec()
             }),
-            _ => Err(IntoICMPv4MessageError::UnknownType)
+            _ => Err(IntoICMPError::UnknownType)
         }
     }
 }
 
-pub fn parse_unreachable_code(value: u8) -> Result<DestinationUnreachableCode, IntoICMPv4MessageError> {
+pub fn parse_unreachable_code(value: u8) -> Result<DestinationUnreachableCode, IntoICMPError> {
     match value {
         0 => Ok(DestinationUnreachableCode::NetworkUnreachable),
         1 => Ok(DestinationUnreachableCode::HostUnreachable),
@@ -262,17 +262,17 @@ pub fn parse_unreachable_code(value: u8) -> Result<DestinationUnreachableCode, I
         13 => Ok(DestinationUnreachableCode::CommAdministrativelyProhibited),
         14 => Ok(DestinationUnreachableCode::HostPrecedenceViolation),
         15 => Ok(DestinationUnreachableCode::PrecedenceCuttoffInEffect),
-        _ => Err(IntoICMPv4MessageError::UnknownCode)
+        _ => Err(IntoICMPError::UnknownCode)
     }
 }
 
-pub fn parse_redirect_code(value: u8) -> Result<RedirectMsgCode, IntoICMPv4MessageError> {
+pub fn parse_redirect_code(value: u8) -> Result<RedirectMsgCode, IntoICMPError> {
     match value {
         0 => Ok(RedirectMsgCode::Network),
         1 => Ok(RedirectMsgCode::Host),
         2 => Ok(RedirectMsgCode::ToSAndNetwork),
         3 => Ok(RedirectMsgCode::ToSAndHost),
-        _ => Err(IntoICMPv4MessageError::UnknownCode)
+        _ => Err(IntoICMPError::UnknownCode)
     }
 }
 
@@ -373,7 +373,7 @@ pub enum ParamProblemCode {
 }
 
 impl TryFrom<&[u8]> for ICMPv6Message {
-    type Error = IntoICMPv4MessageError;
+    type Error = IntoICMPError;
 
     // TODO: reduce amount of repetition here
     fn try_from(msgbytes: &[u8]) -> Result<Self, Self::Error> {
@@ -433,13 +433,13 @@ impl TryFrom<&[u8]> for ICMPv6Message {
                     body: msgbytes[8..].to_vec()
                 })
             }
-            _ => Err(IntoICMPv4MessageError::UnknownType),
+            _ => Err(IntoICMPError::UnknownType),
         }
     }
 }
 
 impl TryFrom<u8> for DestinationUnreachableV6Code {
-    type Error = IntoICMPv4MessageError;
+    type Error = IntoICMPError;
     
     fn try_from(code: u8) -> Result<Self, Self::Error> {
         match code {
@@ -451,32 +451,32 @@ impl TryFrom<u8> for DestinationUnreachableV6Code {
             5 => Ok(DestinationUnreachableV6Code::SourceAddressFailedIngressEgressPolicy),
             6 => Ok(DestinationUnreachableV6Code::RejectRouteToDestination),
             7 => Ok(DestinationUnreachableV6Code::ErrorInSourceRoutingHeader),
-            _ => Err(IntoICMPv4MessageError::UnknownCode)
+            _ => Err(IntoICMPError::UnknownCode)
         }
     }
 }
 
 impl TryFrom<u8> for TimeExceededCode {
-    type Error = IntoICMPv4MessageError;
+    type Error = IntoICMPError;
     
     fn try_from(code: u8) -> Result<Self, Self::Error> {
         match code {
             0 => Ok(TimeExceededCode::ExpiredInTransit),
             1 => Ok(TimeExceededCode::FragmentReassemblyTimeExceeded),
-            _ => Err(IntoICMPv4MessageError::UnknownCode)
+            _ => Err(IntoICMPError::UnknownCode)
         }
     }
 }
 
 impl TryFrom<u8> for ParamProblemCode {
-    type Error = IntoICMPv4MessageError;
+    type Error = IntoICMPError;
     
     fn try_from(code: u8) -> Result<Self, Self::Error> {
         match code {
             0 => Ok(ParamProblemCode::ErroneousHeaderField),
             1 => Ok(ParamProblemCode::UnrecognisedNextHeaderType),
             2 => Ok(ParamProblemCode::UnrecognisedIPv6Option),
-            _ => Err(IntoICMPv4MessageError::UnknownCode)
+            _ => Err(IntoICMPError::UnknownCode)
         }
     }
 }
