@@ -109,14 +109,19 @@ pub fn update_host_info(update: &StatusUpdate, hinfos: &mut [HostInfo]) {
 }
 
 pub fn send_ping(host_info: &HostInfo, socket: &Socket) -> Result<(), Error> {
-    // TODO: IPv6
-    
     // Fill the buffer with the system time, then the numbers 0x10 to 0x37
     // (this is to mimic the packets of the ping(8) command)
     let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
     let secs = time.as_secs();
     let micros = time.subsec_nanos() as u64 / 1000;
-    let mut buf: Vec<u8> = construct_echo_request(0xbeef, 1, &secs.to_be_bytes());
+    let mut buf: Vec<u8>;
+    if host_info.host.is_ipv4() {
+        buf = construct_echo_request_v4(0xbeef, 1, &secs.to_be_bytes());
+    } else if host_info.host.is_ipv6() {
+        buf = construct_echo_request_v6(0xcafe, 1, &secs.to_be_bytes());
+    } else {
+        return Err(ErrorKind::AddrNotAvailable.into());
+    }
     buf.append(&mut micros.to_be_bytes().to_vec());
     buf.append(&mut (0x10_u8..=0x37_u8).collect());
     socket.send_to(&buf, &host_info.host.into())?;
@@ -157,8 +162,14 @@ pub fn receive_ping(mut socket: &Socket) -> Result<(SocketAddr, u64), Error> {
     Err(Error::from(ErrorKind::NotFound))
 }
 
-pub fn mksocket() -> Result<Socket, Error> {
+pub fn mkv4socket() -> Result<Socket, Error> {
     let wildcard: SocketAddr = "0.0.0.0:0".parse().unwrap();
     let socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV4))?;
+    Ok(socket)
+}
+
+pub fn mkv6socket() -> Result<Socket, Error> {
+    let wildcard: SocketAddr = "[::]:0".parse().unwrap();
+    let socket = Socket::new(Domain::for_address(wildcard), Type::DGRAM, Some(Protocol::ICMPV6))?;
     Ok(socket)
 }

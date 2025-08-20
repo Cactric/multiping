@@ -53,7 +53,7 @@ fn main() {
     
     let recv_enum_host_infos = hinfos.clone().into_iter().enumerate();
     let send_enum_host_infos = hinfos.clone().into_iter().enumerate();
-    let socket = mksocket().unwrap();
+    let socket = mkv4socket().unwrap();
     let socket2 = socket.try_clone().unwrap();
     
     // Spawn threads

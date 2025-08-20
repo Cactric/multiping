@@ -287,10 +287,10 @@ fn be_u32(bytes: &[u8], start: usize) -> u32 {
     u32::from_be_bytes(bytes[start..(start+4)].try_into().unwrap())
 }
 
-/// Construct an echo request message
+/// Construct an echo request message for ICMPv4
 /// NOTE: identifier and sequence_num here use normal endianness for your platform
 #[allow(dead_code)]
-pub fn construct_echo_request(identifier: u16, sequence_num: u16, extdata: &[u8]) -> Vec<u8> {
+pub fn construct_echo_request_v4(identifier: u16, sequence_num: u16, extdata: &[u8]) -> Vec<u8> {
     let msg_type: u8 = 8; // EchoRequest
     let msg_code: u8 = 0;
     // Note that the id and sequence number will be replaced when using a DGRAM socket (rather than RAW), which is currently what the program does
@@ -479,4 +479,19 @@ impl TryFrom<u8> for ParamProblemCode {
             _ => Err(IntoICMPv4MessageError::UnknownCode)
         }
     }
+}
+
+/// Construct an echo request message for ICMPv6
+/// NOTE: identifier and sequence_num here use normal endianness for your platform
+pub fn construct_echo_request_v6(identifier: u16, sequence_num: u16, extdata: &[u8]) -> Vec<u8> {
+    let msg_type: u8 = 128; // EchoRequest
+    let msg_code: u8 = 0;
+    // Note that the id and sequence number will be replaced when using a DGRAM socket (rather than RAW), which is currently what the program does
+    let be_id = identifier.to_be_bytes();
+    let be_seq = sequence_num.to_be_bytes();
+    let /*mut*/ header = [msg_type, msg_code, 0, 0, be_id[0], be_id[1], be_seq[0], be_seq[1]];
+    //populate_checksum(&mut header); // different for v6
+    let mut message: Vec<u8> = header.to_vec();
+    message.append(&mut extdata.to_vec());
+    message
 }
