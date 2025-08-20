@@ -1,15 +1,9 @@
-// Source: https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol
-// TODO: ICMPv6
-#[allow(dead_code)]
-#[derive(Debug)]
-pub enum ICMPMessage {
-    ICMPv4(ICMPv4Message),
-    ICMPv6(ICMPv6Message),
-}
+/// Structs for ICMPv4 and ICMPv6
 
-#[allow(dead_code)]
+// Sources: https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol
+// and https://en.wikipedia.org/wiki/ICMPv6
+
 #[derive(Debug)]
-/// Structs for ICMPv4
 pub struct ICMPv4Message {
     /// Type of control message, including the code
     pub icmpv4_type: ICMPv4Type, // on wire: two bytes (type: u8 and code: u8)
@@ -19,7 +13,6 @@ pub struct ICMPv4Message {
     pub icmpv4_data: Vec<u8>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum ICMPv4Type {
     EchoReply { // #0
@@ -70,7 +63,6 @@ pub enum ICMPv4Type {
     // (except for Extended Echo Request/Reply)
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum DestinationUnreachableCode {
     NetworkUnreachable, // #0
@@ -91,7 +83,6 @@ pub enum DestinationUnreachableCode {
     PrecedenceCuttoffInEffect, // #15
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum RedirectMsgCode {
     Network, // #0
@@ -100,14 +91,12 @@ pub enum RedirectMsgCode {
     ToSAndHost, // #3
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TimeExceededCode {
     ExpiredInTransit, // #0
     FragmentReassemblyTimeExceeded, // #1
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum BadIPHeaderCode {
     PointerIndicatesError, // #0
@@ -115,7 +104,6 @@ pub enum BadIPHeaderCode {
     BadLength, // #2
 }
 
-#[allow(dead_code)]
 pub enum IntoICMPError {
     UnknownType,
     UnknownCode,
@@ -123,7 +111,6 @@ pub enum IntoICMPError {
     OtherError,
 }
 
-#[allow(dead_code)]
 impl TryFrom<&[u8]> for ICMPv4Message {
     type Error = IntoICMPError;
 
