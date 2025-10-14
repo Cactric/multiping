@@ -140,7 +140,7 @@ fn main() {
 
 fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, max_host_width: usize, args: Arguments) -> Result<(), Error> {
     let term = Term::buffered_stdout();
-    let colour = console::colors_enabled() || args.colour.unwrap_or(false);
+    let colour = console::colors_enabled() && args.colour.unwrap_or(true);
     term.hide_cursor()?;
     
     // Listen for updates
