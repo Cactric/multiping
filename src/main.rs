@@ -275,7 +275,7 @@ fn format_time_cell(colour: bool, stat_spaces: usize, stat: Option<u64>) -> Stri
     if let Some(s) = stat {
         let cell = format!("{:>united_spaces$} ms", s);
         if colour {
-            return style(cell).blue().to_string();
+            return style(cell).cyan().to_string();
         }
         cell
     } else {
