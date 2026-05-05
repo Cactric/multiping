@@ -199,7 +199,8 @@ pub fn format_host_info(host: &HostInfo, colour: bool, host_spaces: usize, stat_
         for _x in 0..=stat_spaces - 6 {
             s.push(' ');
         }
-        s.push_str(colour_error("Error", colour).as_str());
+        
+        if colour { s.push_str(style("Error").red().to_string().as_str()) } else {s.push_str("Error");}
         s.push_str(": ");
         s.push_str(error.to_string().as_str());
         return s;
@@ -227,46 +228,23 @@ fn not_nan(num: f32) -> Option<u64> {
     }
 }
 
-fn colour_error(msg: &str, colour: bool) -> String {
-    if colour {
-        style(msg).red().to_string()
-    } else {
-        msg.to_string()
-    }
-}
-
-fn colour_ok(msg: &str, colour: bool) -> String {
-    if colour {
-        style(msg).green().to_string()
-    } else {
-        msg.to_string()
-    }
-}
-
-fn colour_amber(msg: &str, colour: bool) -> String {
-    if colour {
-        style(msg).yellow().to_string()
-    } else {
-        msg.to_string()
-    }
-}
-
 fn format_colour_percent(colour: bool, stat_spaces: usize, suc: u32, total: u32) -> String {
     let cell_string = format_percent_cell(stat_spaces, suc, total);
-    if total == 0 || suc > total {
-        return colour_error(&cell_string, colour);
-    }
-    
-    let percent = (total - suc) * 100 / total;
     if !colour {
         return cell_string;
     }
+    
+    if total == 0 || suc > total {
+        return style(cell_string).red().to_string();
+    }
+    
+    let percent = (total - suc) * 100 / total;
     if percent < 10 {
-        colour_ok(&cell_string, colour)
+        style(cell_string).green().to_string()
     } else if percent <= 50 {
-        colour_amber(&cell_string, colour)
+        style(cell_string).yellow().to_string()
     } else { // greater than 50% loss (etc.)
-        colour_error(&cell_string, colour)
+        style(cell_string).red().to_string()
     }
 }
 
