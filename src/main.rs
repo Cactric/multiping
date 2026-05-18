@@ -23,6 +23,10 @@ struct Arguments {
     /// Whether colours are used in the output
     #[arg(short = 'c', long)]
     colour: Option<bool>,
+    
+    /// If specified, forces a specific IP version to be used (valid options are 4 or 6)
+    #[arg(short = 'v', long)]
+    ip_version: Option<u8>,
 }
 
 fn main() {
@@ -39,11 +43,15 @@ fn main() {
     let recv_tx6 = send_tx.clone();
     let mut hinfos: Vec<HostInfo> = Vec::new();
     let mut max_host_width = 0;
+    let mut uses_ipv4 = false;
+    let mut uses_ipv6 = false;
     
     // Parse the provided hosts into a vector of HostInfos
     for h in &args.hosts {
-        let maybe_hinfo = HostInfo::new(h);
+        let maybe_hinfo = HostInfo::new(h, HostOptions { ip_version: args.ip_version });
         if let Ok(hinfo) = maybe_hinfo {
+            uses_ipv4 |= hinfo.host.is_ipv4();
+            uses_ipv6 |= hinfo.host.is_ipv6();
             hinfos.push(hinfo);
             max_host_width = max(max_host_width, console::measure_text_width(h));
         } else {
@@ -84,54 +92,58 @@ fn main() {
     });
 
     // IPv4 listening thread
-    thread::spawn(move || {
-        loop {
-            match receive_ping(&rxsocket4) {
-                Ok((addr, latency)) => {
-                    // Figure out which host the address was from
-                    let mut found = false;
-                    for (i, h) in recv_enum_host_infos4.clone() {
-                        if h.host == addr {
-                            recv_tx4.send(StatusUpdate::Received(i, latency)).unwrap();
-                            found = true;
-                            break;
+    if uses_ipv4 {
+        thread::spawn(move || {
+            loop {
+                match receive_ping(&rxsocket4) {
+                    Ok((addr, latency)) => {
+                        // Figure out which host the address was from
+                        let mut found = false;
+                        for (i, h) in recv_enum_host_infos4.clone() {
+                            if h.host == addr {
+                                recv_tx4.send(StatusUpdate::Received(i, latency)).unwrap();
+                                found = true;
+                                break;
+                            }
                         }
+                        if !found {
+                            eprintln!("Host not found: addr = {}", addr)
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("Error listening to socket: {}", e);
                     }
-                    if !found {
-                        eprintln!("Host not found: addr = {}", addr)
-                    }
-                },
-                Err(e) => {
-                    eprintln!("Error listening to socket: {}", e);
                 }
             }
-        }
-    });
+        });
+    }
     
-    // IPv6 listening thread
-    thread::spawn(move || {
-        loop {
-            match receive_ping(&rxsocket6) {
-                Ok((addr, latency)) => {
-                    // Figure out which host the address was from
-                    let mut found = false;
-                    for (i, h) in recv_enum_host_infos6.clone() {
-                        if h.host == addr {
-                            recv_tx6.send(StatusUpdate::Received(i, latency)).unwrap();
-                            found = true;
-                            break;
+    if uses_ipv6 {
+        // IPv6 listening thread
+        thread::spawn(move || {
+            loop {
+                match receive_ping(&rxsocket6) {
+                    Ok((addr, latency)) => {
+                        // Figure out which host the address was from
+                        let mut found = false;
+                        for (i, h) in recv_enum_host_infos6.clone() {
+                            if h.host == addr {
+                                recv_tx6.send(StatusUpdate::Received(i, latency)).unwrap();
+                                found = true;
+                                break;
+                            }
                         }
+                        if !found {
+                            eprintln!("Host not found: addr = {}", addr)
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("Error listening to socket: {}", e);
                     }
-                    if !found {
-                        eprintln!("Host not found: addr = {}", addr)
-                    }
-                },
-                Err(e) => {
-                    eprintln!("Error listening to socket: {}", e);
                 }
             }
-        }
-    });
+        });
+    }
     
     if let Err(e) = display_loop(rx, hinfos, max_host_width, args) {
         eprintln!("Error in display loop {}", e);

@@ -23,16 +23,28 @@ pub struct HostInfo {
     pub last_error: Option<ErrorKind>,
 }
 
+pub struct HostOptions {
+    pub ip_version: Option<u8>,
+}
+
 impl HostInfo {
     /// Creates a new HostInfo struct for the specified host. Host can be an IP address or domain name
-    pub fn new(host: &str) -> Result<HostInfo, Error> {
+    pub fn new(host: &str, options: HostOptions) -> Result<HostInfo, Error> {
         let possible_hosts = (host, 0).to_socket_addrs()?;
         let mut chosen_host: Option<SocketAddr> = None;
         
         for h in possible_hosts {
             // I guess we found one
-            // TODO: choosing logic? Or at least have options to restrict to v4/v6
-            chosen_host = Some(h);
+            match options.ip_version {
+                None => chosen_host = Some(h),
+                Some(4) => if h.is_ipv4() {chosen_host = Some(h)},
+                Some(6) => if h.is_ipv6() {chosen_host = Some(h)},
+                Some(v) => {
+                    eprintln!("Invalid IP version {}", v);
+                    return Err(Error::from(ErrorKind::InvalidInput));
+                }
+            }
+            break;
         }
         if chosen_host.is_none() {
             return Err(Error::from(ErrorKind::NotFound));
