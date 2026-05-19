@@ -219,7 +219,6 @@ pub fn format_header(host_spaces: usize, stat_spaces: usize) -> String {
 
 pub fn format_host_info(host: &HostInfo, colour: bool, host_spaces: usize, stat_spaces: usize) -> String {
     let mut s = String::new();
-    eprintln!("{:?}", host);
     
     s.push_str(format!("{:<host_spaces$}", host.host_str).as_str());
     s.push_str(SEPARATOR);
