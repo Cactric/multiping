@@ -1,4 +1,5 @@
 use console::{Term, style};
+use std::io::Write;
 use std::{cmp::max, io::Error, process::exit};
 use clap::Parser;
 use std::time::Duration;
@@ -151,9 +152,12 @@ fn main() {
 }
 
 fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, max_host_width: usize, args: Arguments) -> Result<(), Error> {
-    let term = Term::buffered_stdout();
+    let mut term = Term::buffered_stdout();
     let colour = console::colors_enabled() && args.colour.unwrap_or(true);
+
     term.hide_cursor()?;
+    // Enable the alternate screen buffer
+    term.write(b"\x1b[?1049h")?;
     
     // Listen for updates
     for update in rx {
@@ -161,6 +165,13 @@ fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, max_host_
         update_display(&term, &hinfos, max_host_width, colour)?;
     }
     
+    cleanup_display(&mut term)?;
+    Ok(())
+}
+
+fn cleanup_display(term: &mut Term) -> Result<(), Error> {
+    // Disable the alternate screen buffer
+    term.write(b"\x1b[?1049l")?;
     term.show_cursor()?;
     Ok(())
 }
