@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.5.40", features = ["derive"] }
 console = "0.16.0"
+ctrlc = { version = "3.5.2", features = ["termination"] }
 socket2 = "0.6.0"
 
 [lints.rust]

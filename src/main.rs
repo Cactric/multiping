@@ -159,6 +159,12 @@ fn display_loop(rx: Receiver<StatusUpdate>, mut hinfos: Vec<HostInfo>, max_host_
     // Enable the alternate screen buffer
     term.write(b"\x1b[?1049h")?;
     
+    let mut handler_term = term.clone();
+    ctrlc::set_handler(move || {
+        let _ = cleanup_display(&mut handler_term);
+        exit(0);
+    }).expect("Couldn't set Ctrl-C handler");
+    
     // Listen for updates
     for update in rx {
         update_host_info(&update, &mut hinfos);
