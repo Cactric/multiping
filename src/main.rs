@@ -179,6 +179,7 @@ fn cleanup_display(term: &mut Term) -> Result<(), Error> {
     // Disable the alternate screen buffer
     term.write(b"\x1b[?1049l")?;
     term.show_cursor()?;
+    term.flush()?;
     Ok(())
 }
 
@@ -196,7 +197,6 @@ fn update_display(term: &Term, hinfos: &Vec<HostInfo>, max_host_width: usize, co
         term.write_line(line.as_str())?;
     }
     
-    term.show_cursor()?;
     term.flush()?;
     
     Ok(())
