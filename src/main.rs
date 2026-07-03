@@ -1,5 +1,5 @@
 use console::{Term, style};
-use std::io::Write;
+use std::io::{Write, stdout};
 use std::{cmp::max, io::Error, process::exit};
 use clap::Parser;
 use std::time::Duration;
@@ -46,9 +46,14 @@ fn main() {
     let mut max_host_width = 0;
     let mut uses_ipv4 = false;
     let mut uses_ipv6 = false;
+    let term = Term::stdout();
     
     // Parse the provided hosts into a vector of HostInfos
-    for h in &args.hosts {
+    for (i, h) in args.hosts.iter().enumerate() {
+        let _ = term.clear_line();
+        print!("Resolving host {} ({}/{}).\r", h, i+1, args.hosts.len());
+        let _ = stdout().flush();
+        
         let maybe_hinfo = HostInfo::new(h, HostOptions { ip_version: args.ip_version });
         if let Ok(hinfo) = maybe_hinfo {
             uses_ipv4 |= hinfo.host.is_ipv4();
@@ -56,10 +61,13 @@ fn main() {
             hinfos.push(hinfo);
             max_host_width = max(max_host_width, console::measure_text_width(h));
         } else {
-            eprintln!("Failed to parse {}", h);
+            eprintln!("\nFailed to parse/resolve {}", h);
             exit(1);
         }
     }
+    
+    let _ = term.clear_line();
+    println!("All hosts resolved");
     
     let recv_enum_host_infos4 = hinfos.clone().into_iter().enumerate();
     let recv_enum_host_infos6 = hinfos.clone().into_iter().enumerate();
